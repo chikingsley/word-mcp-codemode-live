@@ -74,8 +74,8 @@ def _find_word_with_docs():
     Returns the Word.Application COM object if found, or None.
     """
     try:
-        import pythoncom
-        import win32com.client
+        import pythoncom  # ty: ignore[unresolved-import, unused-ignore-comment]
+        import win32com.client  # ty: ignore[unresolved-import, unused-ignore-comment]
 
         rot = pythoncom.GetRunningObjectTable(0)
         enum = rot.EnumRunning()
