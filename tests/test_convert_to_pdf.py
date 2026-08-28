@@ -5,7 +5,7 @@ import pytest
 from docx import Document
 
 # Target for testing: convert_to_pdf (async function)
-from word_document_server.tools.extended_document_tools import convert_to_pdf
+from word_mcp_codemode_live.tools.extended_document_tools import convert_to_pdf
 
 
 def _make_sample_docx(path: Path) -> None:
@@ -13,8 +13,10 @@ def _make_sample_docx(path: Path) -> None:
     doc = Document()
     doc.add_heading("Conversion Test Document", level=1)
     doc.add_paragraph("This is a test paragraph for PDF conversion. Contains ASCII too.")
-    doc.add_paragraph("Second paragraph: Contains special characters and spaces to cover path/content edge cases.")
-    doc.save(path)
+    doc.add_paragraph(
+        "Second paragraph: Contains special characters and spaces to cover path/content edge cases."
+    )
+    doc.save(str(path))
 
 
 def test_convert_to_pdf_with_temp_docx(tmp_path: Path):
@@ -81,4 +83,5 @@ if __name__ == "__main__":
     # Allow running this file directly for quick verification:
     #   python tests/test_convert_to_pdf.py
     import sys
+
     sys.exit(pytest.main([__file__, "-q"]))

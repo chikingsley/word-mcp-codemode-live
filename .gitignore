@@ -1,19 +1,21 @@
-# Project files
-.idea
+# Editors and operating systems
+.idea/
+.vscode/
 .DS_Store
 
 # Python-generated files
 __pycache__/
 *.py[oc]
+.pytest_cache/
+.ruff_cache/
 build/
 dist/
 wheels/
 *.egg-info
 
 # Virtual environments
-.venv
-.env.example
-.idea
+.venv/
+.env
 
 # Local MCP config (contains user-specific paths)
 mcp-config.json

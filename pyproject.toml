@@ -1,46 +1,68 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.12.7,<0.13"]
+build-backend = "uv_build"
 
 [project]
-name = "word-mcp-live"
-version = "1.6.20"
-description = "MCP server for Microsoft Word — live editing on Windows (COM) and macOS (JXA), plus cross-platform python-docx tools"
+name = "word-mcp-codemode-live"
+version = "0.1.0"
+description = "Code Mode MCP server for live Microsoft Word editing and cross-platform DOCX tools"
 readme = "README.md"
-license = {file = "LICENSE"}
-authors = [
-    {name = "GongRzhe", email = "gongrzhe@gmail.com"},
-    {name = "Yüce Karapazar"}
-]
-keywords = ["mcp", "word", "docx", "microsoft-word", "document", "com-automation", "python-docx", "ai", "llm", "claude"]
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+keywords = ["mcp", "word", "docx", "microsoft-word", "code-mode", "fastmcp", "ai"]
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
-requires-python = ">=3.11"
 dependencies = [
-    "python-docx>=1.1.2",
-    "fastmcp>=2.8.1",
-    "msoffcrypto-tool>=5.4.2",
     "docx2pdf>=0.1.8",
-    "pytest>=8.4.2",
-    "pywin32>=306; sys_platform == 'win32'",
-    "Pillow>=10.0.0; sys_platform == 'win32'",
+    "fastmcp[code-mode]>=3.4.7,<4",
+    "lxml>=6.1.2",
+    "mcp>=1.24.0,<2",
+    "pillow>=12.3.0; sys_platform == 'win32'",
+    "python-docx>=1.2.0",
+    "pywin32>=312; sys_platform == 'win32'",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.5",
+    "ty>=0.0.75",
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/ykarapazar/word-mcp-live"
-"Bug Tracker" = "https://github.com/ykarapazar/word-mcp-live/issues"
-"Changelog" = "https://github.com/ykarapazar/word-mcp-live/blob/main/CHANGELOG.md"
-"Documentation" = "https://github.com/ykarapazar/word-mcp-live#readme"
-
-[tool.hatch.build.targets.wheel]
-only-include = [
-    "word_document_server",
-    "office_word_mcp_server",
-]
-sources = ["."]
+Homepage = "https://github.com/chikingsley/word-mcp-codemode-live"
+Repository = "https://github.com/chikingsley/word-mcp-codemode-live"
+Issues = "https://github.com/chikingsley/word-mcp-codemode-live/issues"
+Changelog = "https://github.com/chikingsley/word-mcp-codemode-live/blob/main/CHANGELOG.md"
 
 [project.scripts]
-word_mcp_server = "word_document_server.main:run_server"
+word-mcp-codemode-live = "word_mcp_codemode_live.main:main"
+
+[tool.uv.build-backend]
+module-name = "word_mcp_codemode_live"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "RUF013"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ty.environment]
+python-version = "3.10"
