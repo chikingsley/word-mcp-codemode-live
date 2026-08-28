@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - Unreleased
+
+### Changed
+
+- Forked and renamed the distribution, command, and Python package to
+  `word-mcp-codemode-live` / `word_mcp_codemode_live`.
+- Made FastMCP Code Mode the default three-tool interface.
+- Migrated the package to a uv-native `src/` layout and `uv_build`.
+- Limited transports to local stdio and canonical HTTP.
+- Replaced wrapper-based registration with a direct internal tool registry.
+
+### Removed
+
+- Legacy commands, compatibility aliases, container/host metadata, and SSE transport.
+- Cross-platform document-protection tools inherited from the upstream catalog.
+
+## Upstream history
+
 ## [1.6.0] - 2026-04-29
 
 ### Added
@@ -142,3 +160,4 @@ These 4 tools require Windows COM APIs with no AppleScript/JXA equivalent:
 [1.2.0]: https://github.com/ykarapazar/word-mcp-live/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/ykarapazar/word-mcp-live/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ykarapazar/word-mcp-live/releases/tag/v1.0.0
+[0.1.0]: https://github.com/chikingsley/word-mcp-codemode-live/releases/tag/v0.1.0
