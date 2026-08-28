@@ -87,7 +87,7 @@ uv build --no-sources
 
 Pushes to `main` run the same checks in GitHub Actions. If the version in
 `pyproject.toml` does not yet exist on PyPI, the workflow publishes it with
-PyPI Trusted Publishing. Bump the version before a release:
+`uv publish`. Bump the version before a release:
 
 ```bash
 uv version --bump patch
