@@ -149,11 +149,11 @@ JSON.stringify({
     return {"platform": "darwin", "version": info["version"]}
 
 
-def find_document(app_ref, filename: str | None = None):
+def find_document(_app_ref, filename: str | None = None):
     """Find an open document by name. Returns a dict with doc info.
 
     Args:
-        app_ref: Sentinel from get_word_app() (unused, kept for interface parity).
+        _app_ref: Sentinel from get_word_app() (unused, kept for interface parity).
         filename: Document basename or full path. None = front document.
 
     Returns:
@@ -169,7 +169,7 @@ JSON.stringify({{name: d.name(), path: d.posixFullName()}});
 
 
 @contextmanager
-def undo_record(app_ref, name: str):
+def undo_record(_app_ref, name: str):
     """No-op context manager on macOS.
 
     Word for Mac's UndoRecord is not accessible via AppleScript/JXA.
