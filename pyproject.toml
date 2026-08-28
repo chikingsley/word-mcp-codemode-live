@@ -68,6 +68,9 @@ docstring-code-format = true
 [tool.ty.environment]
 python-version = "3.10"
 
+[tool.ty.analysis]
+allowed-unresolved-imports = ["pythoncom", "win32com.**"]
+
 [tool.vulture]
 min_confidence = 80
 paths = ["src", "tests"]
