@@ -80,8 +80,6 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/project/word-mcp-codemode-live/
-    permissions:
-      id-token: write
     steps:
       - name: Install uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
@@ -93,9 +91,6 @@ jobs:
         with:
           name: distributions
           path: dist/
-
-      - name: Generate attestations
-        uses: astral-sh/attest-action@f589a42a7efb6fe400b4f400de60b4bc90390027 # v0.0.6
 
       - name: Publish with uv
         env:
