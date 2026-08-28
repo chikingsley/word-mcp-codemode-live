@@ -8,9 +8,11 @@ import os
 import sys
 import unicodedata
 from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
 _WORD_APP: Any | None = None
+_UNDO_DEPTH: ContextVar[int] = ContextVar("word_mcp_undo_depth", default=0)
 
 
 def remember_word_app(app: Any) -> Any:
@@ -184,6 +186,19 @@ def undo_record(app, name: str):
         with undo_record(app, "MCP: Insert Text"):
             doc.Range(0, 0).InsertBefore("Hello")
     """
+    depth = _UNDO_DEPTH.get()
+    token = _UNDO_DEPTH.set(depth + 1)
+
+    # Batch tools wrap existing live tools, and those tools already create
+    # their own undo records. Word does not support nested custom records, so
+    # inner calls participate in the outer record instead of ending it.
+    if depth:
+        try:
+            yield
+        finally:
+            _UNDO_DEPTH.reset(token)
+        return
+
     rec = None
     try:
         rec = app.UndoRecord
@@ -204,3 +219,4 @@ def undo_record(app, name: str):
                 rec.EndCustomRecord()
             except Exception:
                 pass
+        _UNDO_DEPTH.reset(token)
