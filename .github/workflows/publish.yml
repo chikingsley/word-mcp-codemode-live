@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: read
     outputs:
@@ -50,19 +50,20 @@ jobs:
 
       - name: Check whether this version is new
         id: version
-        shell: bash
+        shell: pwsh
         run: |
-          version="$(uv version --short)"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          if curl --fail --silent --show-error \
-            "https://pypi.org/pypi/word-mcp-codemode-live/${version}/json" \
-            > /dev/null; then
-            echo "should_publish=false" >> "$GITHUB_OUTPUT"
-            echo "PyPI already has ${version}; build verified, publish skipped."
-          else
-            echo "should_publish=true" >> "$GITHUB_OUTPUT"
-            echo "PyPI does not have ${version}; release will be published."
-          fi
+          $version = uv version --short
+          "version=$version" >> $env:GITHUB_OUTPUT
+          $response = Invoke-WebRequest `
+            -Uri "https://pypi.org/pypi/word-mcp-codemode-live/$version/json" `
+            -SkipHttpErrorCheck
+          if ($response.StatusCode -eq 200) {
+            "should_publish=false" >> $env:GITHUB_OUTPUT
+            Write-Output "PyPI already has $version; build verified, publish skipped."
+          } else {
+            "should_publish=true" >> $env:GITHUB_OUTPUT
+            Write-Output "PyPI does not have $version; release will be published."
+          }
 
       - name: Upload distributions
         if: steps.version.outputs.should_publish == 'true'

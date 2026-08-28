@@ -4,13 +4,9 @@ Extended document tools for Word Document Server.
 These tools provide enhanced document content extraction and search capabilities.
 """
 
-import importlib
 import json
 import os
-import platform
-import shutil
-import subprocess
-from typing import Any, cast
+import sys
 
 from word_mcp_codemode_live.utils.extended_document_utils import (
     find_text,
@@ -92,160 +88,75 @@ async def get_highlighted_text_from_document(filename: str, color: str | None = 
 
 
 async def convert_to_pdf(filename: str, output_filename: str | None = None) -> str:
-    """Convert a Word document to PDF format.
+    """Convert a Word document to PDF with Microsoft Word on Windows.
 
     Args:
         filename: Path to the Word document
         output_filename: Optional path for the output PDF. If not provided,
                          will use the same name with .pdf extension
     """
-    filename = ensure_docx_extension(filename)
+    if sys.platform != "win32":
+        return "PDF conversion requires Microsoft Word on Windows"
+
+    filename = os.path.abspath(ensure_docx_extension(filename))
 
     if not os.path.exists(filename):
         return f"Document {filename} does not exist"
 
-    # Generate output filename if not provided
     if not output_filename:
         base_name, _ = os.path.splitext(filename)
         output_filename = f"{base_name}.pdf"
     elif not output_filename.lower().endswith(".pdf"):
         output_filename = f"{output_filename}.pdf"
 
-    # Convert to absolute path if not already
-    if not os.path.isabs(output_filename):
-        output_filename = os.path.abspath(output_filename)
+    output_filename = os.path.abspath(output_filename)
 
-    # Ensure the output directory exists
     output_dir = os.path.dirname(output_filename)
-    if not output_dir:
-        output_dir = os.path.abspath(".")
-
-    # Create the directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
 
-    # Check if output file can be written
     is_writeable, error_message = check_file_writeable(output_filename)
     if not is_writeable:
         return f"Cannot create PDF: {error_message} (Path: {output_filename}, Dir: {output_dir})"
 
     try:
         async with get_file_lock(filename):
-            # Determine platform for appropriate conversion method
-            system = platform.system()
+            from word_mcp_codemode_live.core.word_com import find_document, get_word_app
 
-            if system == "Windows":
-                # On Windows, try docx2pdf which uses Microsoft Word
+            document = None
+            dedicated_app = None
+            try:
                 try:
-                    convert = cast(Any, importlib.import_module("docx2pdf")).convert
+                    document = find_document(get_word_app(), filename)
+                except (RuntimeError, ValueError):
+                    import win32com.client
 
-                    convert(filename, output_filename)
-                    return f"Document successfully converted to PDF: {output_filename}"
-                except (ImportError, Exception) as e:
-                    return f"Failed to convert document to PDF: {str(e)}\nNote: docx2pdf requires Microsoft Word to be installed."
+                    dedicated_app = win32com.client.DispatchEx("Word.Application")
+                    dedicated_app.Visible = False
+                    dedicated_app.DisplayAlerts = 0
+                    document = dedicated_app.Documents.Open(filename, ReadOnly=True)
 
-            elif system in ["Linux", "Darwin"]:  # Linux or macOS
-                errors = []
+                document.ExportAsFixedFormat(
+                    OutputFileName=output_filename,
+                    ExportFormat=17,  # wdExportFormatPDF
+                    OpenAfterExport=False,
+                    OptimizeFor=0,  # wdExportOptimizeForPrint
+                    Item=0,  # wdExportDocumentContent
+                    IncludeDocProps=True,
+                    KeepIRM=True,
+                    CreateBookmarks=1,  # wdExportCreateHeadingBookmarks
+                    DocStructureTags=True,
+                    BitmapMissingFonts=True,
+                    UseISO19005_1=False,
+                )
+            finally:
+                if dedicated_app is not None:
+                    if document is not None:
+                        document.Close(SaveChanges=False)
+                    dedicated_app.Quit(SaveChanges=False)
 
-                # --- Attempt 0 (macOS only): JXA save-as-PDF from open document ---
-                if system == "Darwin":
-                    try:
-                        from word_mcp_codemode_live.core.word_mac import mac_save_as_pdf
-
-                        result_json = mac_save_as_pdf(
-                            filename=filename, output_path=output_filename
-                        )
-                        import json as _json
-
-                        result_data = _json.loads(result_json)
-                        if result_data.get("converted") and os.path.exists(output_filename):
-                            return f"Document successfully converted to PDF via Word JXA: {output_filename}"
-                        errors.append(
-                            f"JXA save-as-PDF returned but file not created: {result_json}"
-                        )
-                    except Exception as e:
-                        errors.append(f"JXA save-as-PDF failed: {str(e)}")
-
-                # --- Attempt 1: LibreOffice ---
-                lo_commands = []
-                if system == "Darwin":  # macOS
-                    lo_commands = [
-                        "soffice",
-                        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
-                    ]
-                else:  # Linux
-                    lo_commands = ["libreoffice", "soffice"]
-
-                for cmd_name in lo_commands:
-                    try:
-                        output_dir_for_lo = os.path.dirname(output_filename) or "."
-                        os.makedirs(output_dir_for_lo, exist_ok=True)
-
-                        cmd = [
-                            cmd_name,
-                            "--headless",
-                            "--convert-to",
-                            "pdf",
-                            "--outdir",
-                            output_dir_for_lo,
-                            filename,
-                        ]
-                        result = subprocess.run(
-                            cmd, capture_output=True, text=True, timeout=60, check=False
-                        )
-
-                        if result.returncode == 0:
-                            # LibreOffice typically creates a PDF with the same base name as the source file.
-                            # e.g., 'mydoc.docx' -> 'mydoc.pdf'
-                            base_name = os.path.splitext(os.path.basename(filename))[0]
-                            created_pdf_name = f"{base_name}.pdf"
-                            created_pdf_path = os.path.join(output_dir_for_lo, created_pdf_name)
-
-                            # If the created file exists, move it to the desired output_filename if necessary.
-                            if os.path.exists(created_pdf_path):
-                                if created_pdf_path != output_filename:
-                                    shutil.move(created_pdf_path, output_filename)
-
-                                # Final check: does the target file now exist?
-                                if os.path.exists(output_filename):
-                                    return f"Document successfully converted to PDF via {cmd_name}: {output_filename}"
-
-                            # If we get here, soffice returned 0 but the expected file wasn't created.
-                            errors.append(
-                                f"{cmd_name} returned success code, but output file '{created_pdf_path}' was not found."
-                            )
-                            # Continue to the next command or fallback.
-                        else:
-                            errors.append(f"{cmd_name} failed. Stderr: {result.stderr.strip()}")
-                    except FileNotFoundError:
-                        errors.append(f"Command '{cmd_name}' not found.")
-                    except (subprocess.SubprocessError, Exception) as e:
-                        errors.append(f"An error occurred with {cmd_name}: {str(e)}")
-
-                # --- Attempt 2: docx2pdf (Fallback) ---
-                try:
-                    convert = cast(Any, importlib.import_module("docx2pdf")).convert
-
-                    convert(filename, output_filename)
-                    if os.path.exists(output_filename) and os.path.getsize(output_filename) > 0:
-                        return f"Document successfully converted to PDF via docx2pdf: {output_filename}"
-                    else:
-                        errors.append(
-                            "docx2pdf fallback was executed but failed to create a valid output file."
-                        )
-                except ImportError:
-                    errors.append("docx2pdf is not installed, skipping fallback.")
-                except Exception as e:
-                    errors.append(f"docx2pdf fallback failed with an exception: {str(e)}")
-
-                # --- If all attempts failed ---
-                error_summary = "Failed to convert document to PDF using all available methods.\n"
-                error_summary += "Recorded errors: " + "; ".join(errors) + "\n"
-                error_summary += "To convert documents to PDF, please install either:\n"
-                error_summary += "1. LibreOffice (recommended for Linux/macOS)\n"
-                error_summary += "2. Microsoft Word (required for docx2pdf on Windows/macOS)"
-                return error_summary
-            else:
-                return f"PDF conversion not supported on {system} platform"
+            if os.path.exists(output_filename) and os.path.getsize(output_filename) > 0:
+                return f"Document successfully converted to PDF: {output_filename}"
+            return "Microsoft Word completed PDF export but did not create a valid output file"
 
     except Exception as e:
         return f"Failed to convert document to PDF: {str(e)}"

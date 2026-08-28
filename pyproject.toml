@@ -1,22 +1,22 @@
 [build-system]
-requires = ["uv_build>=0.12.7,<0.13"]
+requires = ["uv_build>=0.12.7"]
 build-backend = "uv_build"
 
 [project]
 name = "word-mcp-codemode-live"
-version = "0.1.0"
-description = "Code Mode MCP server for live Microsoft Word editing and cross-platform DOCX tools"
+version = "0.1.1"
+description = "Code Mode MCP server for fast, verified Microsoft Word editing on Windows"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
+# Python 3.10 is the minimum runtime; pywin32's 312 below is its package
+# release number, not a Python-version requirement.
 requires-python = ">=3.10"
 keywords = ["mcp", "word", "docx", "microsoft-word", "code-mode", "fastmcp", "ai"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows",
-    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -25,13 +25,18 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "docx2pdf>=0.1.8",
-    "fastmcp[code-mode]>=3.4.7,<4",
+    # MCP server, Code Mode discovery, and sandboxed execute tool.
+    "fastmcp[code-mode]>=3.4.7",
+    # Direct OOXML work for comments, footnotes, links, and save preservation.
     "lxml>=6.1.2",
-    "mcp>=1.24.0,<2",
-    "pillow>=12.3.0; sys_platform == 'win32'",
+    # Imported directly for MCP content and annotation types.
+    "mcp>=1.24.0",
+    # Rasterizes Microsoft Word's PDF export for page-image verification.
+    "pymupdf>=1.26.4",
+    # File-based DOCX/OOXML editing.
     "python-docx>=1.2.0",
-    "pywin32>=312; sys_platform == 'win32'",
+    # Microsoft Word COM automation and Running Object Table access.
+    "pywin32>=312",
 ]
 
 [dependency-groups]
@@ -42,12 +47,6 @@ dev = [
     "ty>=0.0.75",
     "vulture>=2.14",
 ]
-
-[project.urls]
-Homepage = "https://github.com/chikingsley/word-mcp-codemode-live"
-Repository = "https://github.com/chikingsley/word-mcp-codemode-live"
-Issues = "https://github.com/chikingsley/word-mcp-codemode-live/issues"
-Changelog = "https://github.com/chikingsley/word-mcp-codemode-live/blob/main/CHANGELOG.md"
 
 [project.scripts]
 word-mcp-codemode-live = "word_mcp_codemode_live.main:main"

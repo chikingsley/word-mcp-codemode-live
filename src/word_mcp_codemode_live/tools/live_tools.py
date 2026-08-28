@@ -12,10 +12,6 @@ from typing import Any
 
 from word_mcp_codemode_live.defaults import DEFAULT_AUTHOR
 
-# macOS JXA dispatch
-_MAC_AVAILABLE = __import__("sys").platform == "darwin"
-
-
 # Word COM constants
 WD_STORY = 6
 
@@ -45,16 +41,6 @@ async def word_live_insert_text(
     Returns:
         JSON with result info.
     """
-    if _MAC_AVAILABLE:
-        from word_mcp_codemode_live.core.word_mac import mac_insert_text
-
-        return mac_insert_text(
-            filename=filename,
-            text=text,
-            position=position,
-            bookmark=bookmark,
-            track_changes=track_changes,
-        )
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -202,29 +188,6 @@ async def word_live_format_text(
     Returns:
         JSON with result info.
     """
-    if _MAC_AVAILABLE:
-        from word_mcp_codemode_live.core.word_mac import mac_format_text
-
-        return mac_format_text(
-            filename=filename,
-            start=start,
-            end=end,
-            start_paragraph=start_paragraph,
-            end_paragraph=end_paragraph,
-            bold=bold,
-            italic=italic,
-            underline=underline,
-            strikethrough=strikethrough,
-            font_name=font_name,
-            font_size=font_size,
-            font_color=font_color,
-            highlight_color=highlight_color,
-            style_name=style_name,
-            paragraph_alignment=paragraph_alignment,
-            page_break_before=page_break_before,
-            preserve_direct_formatting=preserve_direct_formatting,
-            track_changes=track_changes,
-        )
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -388,7 +351,6 @@ async def word_live_apply_list(
     level_map: dict | None = None,
     track_changes: bool = False,
     font_color: str | None = None,
-    outline_numbered: bool = True,
 ) -> str:
     """[Windows only] Apply or remove bullet/numbered/multilevel list formatting on paragraphs.
 
@@ -428,25 +390,6 @@ async def word_live_apply_list(
     Returns:
         JSON with result info.
     """
-    if _MAC_AVAILABLE:
-        from word_mcp_codemode_live.core.word_mac import mac_apply_list
-
-        return mac_apply_list(
-            filename=filename,
-            start_paragraph=start_paragraph,
-            end_paragraph=end_paragraph,
-            list_type=list_type,
-            level=level,
-            remove=remove,
-            continue_previous=continue_previous,
-            number_format=number_format,
-            number_style=number_style,
-            start_at=start_at,
-            level_map=level_map,
-            track_changes=track_changes,
-            font_color=font_color,
-            outline_numbered=outline_numbered,
-        )
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -579,7 +522,6 @@ async def word_live_setup_heading_numbering(
     filename: str | None = None,
     h1_paragraphs: list | None = None,
     h2_paragraphs: list | None = None,
-    heading_map: dict | None = None,
     strip_manual_numbers: bool = True,
     h1_number_format: str | None = None,
     h2_number_format: str | None = None,
@@ -635,30 +577,6 @@ async def word_live_setup_heading_numbering(
         JSON with h1_applied, h2_applied, and stripped counts.
     """
     import re
-
-    if _MAC_AVAILABLE:
-        from word_mcp_codemode_live.core.word_mac import mac_setup_heading_numbering
-
-        return mac_setup_heading_numbering(
-            filename=filename,
-            h1_paragraphs=h1_paragraphs,
-            h2_paragraphs=h2_paragraphs,
-            heading_map=heading_map,
-            strip_manual_numbers=strip_manual_numbers,
-            h1_number_format=h1_number_format,
-            h2_number_format=h2_number_format,
-            font_name=font_name,
-            h1_size=h1_size,
-            h2_size=h2_size,
-            bold=bold,
-            alignment=alignment,
-            font_color=font_color,
-            h1_space_before=h1_space_before,
-            h1_space_after=h1_space_after,
-            h2_space_before=h2_space_before,
-            h2_space_after=h2_space_after,
-            line_spacing=line_spacing,
-        )
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live tools only on Windows"})
@@ -1026,19 +944,6 @@ async def word_live_replace_text(
     Returns:
         JSON with count of replacements made.
     """
-    if _MAC_AVAILABLE:
-        from word_mcp_codemode_live.core.word_mac import mac_replace_text
-
-        return mac_replace_text(
-            filename=filename,
-            find_text=find_text,
-            replace_text=replace_text,
-            match_case=match_case,
-            match_whole_word=match_whole_word,
-            use_wildcards=use_wildcards,
-            replace_all=replace_all,
-            track_changes=track_changes,
-        )
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -1183,8 +1088,6 @@ async def word_live_insert_paragraphs(
     Returns:
         JSON with result info including count of paragraphs inserted.
     """
-    if _MAC_AVAILABLE:
-        return json.dumps({"error": "word_live_insert_paragraphs is not yet implemented on macOS"})
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -1316,17 +1219,6 @@ async def word_live_add_table(
     Returns:
         JSON with result info.
     """
-    if _MAC_AVAILABLE:
-        from word_mcp_codemode_live.core.word_mac import mac_add_table
-
-        return mac_add_table(
-            filename=filename,
-            rows=rows,
-            cols=cols,
-            position=position,
-            data=data,
-            track_changes=track_changes,
-        )
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -1491,8 +1383,6 @@ async def word_live_format_table(
     Returns:
         JSON with result info.
     """
-    if _MAC_AVAILABLE:
-        return json.dumps({"error": "word_live_format_table is not yet implemented on macOS"})
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -1679,10 +1569,6 @@ async def word_live_delete_text(
     Returns:
         JSON with deleted text info.
     """
-    if _MAC_AVAILABLE:
-        from word_mcp_codemode_live.core.word_mac import mac_delete_text
-
-        return mac_delete_text(filename=filename, start=start, end=end, track_changes=track_changes)
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -1792,18 +1678,6 @@ async def word_live_modify_table(
     Returns:
         JSON with operation result.
     """
-    if _MAC_AVAILABLE:
-        from word_mcp_codemode_live.core.word_mac import mac_modify_table
-
-        return mac_modify_table(
-            filename=filename,
-            table_index=table_index,
-            operation=operation,
-            row=row,
-            col=col,
-            text=text,
-            track_changes=track_changes,
-        )
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -1950,10 +1824,6 @@ async def word_live_undo(
     Returns:
         JSON with success status and number of undone steps.
     """
-    if _MAC_AVAILABLE:
-        from word_mcp_codemode_live.core.word_mac import mac_undo
-
-        return mac_undo(filename=filename, times=times)
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -2104,10 +1974,6 @@ async def word_live_save(
     Returns:
         JSON with save result.
     """
-    if _MAC_AVAILABLE:
-        from word_mcp_codemode_live.core.word_mac import mac_save
-
-        return mac_save(filename=filename, save_as=save_as)
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -2170,10 +2036,6 @@ async def word_live_toggle_track_changes(
     Returns:
         JSON with the new track changes state.
     """
-    if _MAC_AVAILABLE:
-        from word_mcp_codemode_live.core.word_mac import mac_toggle_track_changes
-
-        return mac_toggle_track_changes(filename=filename, enable=enable)
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -2245,8 +2107,6 @@ async def word_live_insert_image(
     Returns:
         JSON with image insertion result.
     """
-    if _MAC_AVAILABLE:
-        return json.dumps({"error": "word_live_insert_image is not yet implemented on macOS"})
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -2490,10 +2350,6 @@ async def word_live_insert_cross_reference(
     Returns:
         JSON with cross-reference result.
     """
-    if _MAC_AVAILABLE:
-        return json.dumps(
-            {"error": "word_live_insert_cross_reference is not yet implemented on macOS"}
-        )
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -2603,10 +2459,6 @@ async def word_live_list_cross_reference_items(
     Returns:
         JSON with list of referenceable items and their indices.
     """
-    if _MAC_AVAILABLE:
-        return json.dumps(
-            {"error": "word_live_list_cross_reference_items is not yet implemented on macOS"}
-        )
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})
@@ -2893,8 +2745,6 @@ async def word_live_insert_equation(
         r"\arg": "arg",
         r"\mod": "mod",
     }
-    if _MAC_AVAILABLE:
-        return json.dumps({"error": "word_live_insert_equation is not yet implemented on macOS"})
 
     if sys.platform != "win32":
         return json.dumps({"error": "Live editing is only available on Windows"})

@@ -1,8 +1,9 @@
 # word-mcp-codemode-live
 
-Code Mode MCP server for editing Microsoft Word documents. It exposes a compact
-discovery and execution interface over file-based DOCX tools and live Microsoft
-Word automation instead of loading the entire tool catalog into an agent context.
+Windows-first Code Mode MCP server for editing Microsoft Word documents. It
+exposes a compact discovery and execution interface over file-based DOCX tools
+and live Word automation instead of loading the entire tool catalog into an
+agent context.
 
 This project is currently beta software.
 
@@ -33,19 +34,21 @@ uv tool install word-mcp-codemode-live
 word-mcp-codemode-live
 ```
 
-Windows live editing installs `pywin32`; Word-window screenshots also install
-Pillow. Both dependencies are limited to Windows by environment markers.
+Live editing requires Microsoft Word on Windows. `pywin32` drives Word, and
+PyMuPDF renders Word's PDF output into page images for visual verification.
 
 ## Modes
 
-- Code Mode is the default. Clients see only `search`, `get_schema`, and
-  `execute`, while the underlying Word tool catalog is discovered on demand.
+- Code Mode is the default. Clients see `search`, `get_schema`, `execute`, and
+  the two image-producing workflow tools (`word_live_edit_batch` and
+  `word_live_capture_pages`). The rest of the catalog is discovered on demand.
 - `MCP_TOOL_MODE=full` exposes the complete catalog for development and
   diagnostics.
-- Cross-platform tools edit saved DOCX files with `python-docx` and OOXML.
+- File-based tools edit saved DOCX files with `python-docx` and OOXML.
 - Windows live tools automate an open Word instance through COM.
-- macOS live tools automate Microsoft Word through JavaScript for Automation.
-- Linux supports file-based DOCX tools; live Word automation is unavailable.
+- `word_live_edit_batch` groups multiple edits into one Undo action, verifies
+  text/layout assertions, saves once, and can return rendered affected pages.
+- `word_live_capture_pages` returns page images rendered by Word itself.
 
 ## Transports
 
@@ -85,15 +88,16 @@ uv run pytest
 uv build --no-sources
 ```
 
-Pushes to `main` run the same checks in GitHub Actions. If the version in
+Pushes to `main` run the same checks on Windows. If the version in
 `pyproject.toml` does not yet exist on PyPI, the workflow publishes it with
-`uv publish`. Bump the version before a release:
+`uv publish` and the repository's `PYPI_TOKEN` Actions secret. Bump the version
+before a release:
 
 ```bash
 uv version --bump patch
 git add pyproject.toml uv.lock
 git commit -m "release: bump version"
-git push
+git push origin main
 ```
 
 Source lives under `src/word_mcp_codemode_live/`. Tool implementations are

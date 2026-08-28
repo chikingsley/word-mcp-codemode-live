@@ -16,10 +16,11 @@ from word_mcp_codemode_live.tools import (
     format_tools,
     hyperlink_tools,
     layout_tools,
+    live_batch_tools,
     live_layout_tools,
     live_read_tools,
     live_tools,
-    screen_capture_tools,
+    page_capture_tools,
     tracked_changes_tools,
 )
 
@@ -343,9 +344,14 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         ToolAnnotations(title="Reject Tracked Changes", destructiveHint=True),
     ),
     (
-        screen_capture_tools.word_screen_capture,
-        "word_screen_capture",
-        ToolAnnotations(title="Word Screen Capture", readOnlyHint=True),
+        page_capture_tools.word_live_capture_pages,
+        "word_live_capture_pages",
+        ToolAnnotations(title="Render Live Word Pages", readOnlyHint=True),
+    ),
+    (
+        live_batch_tools.word_live_edit_batch,
+        "word_live_edit_batch",
+        ToolAnnotations(title="Batch Edit and Verify Live Word", destructiveHint=True),
     ),
     (
         live_tools.word_live_insert_text,

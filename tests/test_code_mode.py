@@ -6,6 +6,18 @@ from word_mcp_codemode_live.main import create_server
 
 
 @pytest.mark.asyncio
+async def test_code_mode_discovers_batch_and_page_capture_tools() -> None:
+    async with Client(create_server(tool_mode="code")) as client:
+        result = await client.call_tool(
+            "search", {"query": "atomic batch edit verify screenshot Word pages"}
+        )
+
+    text = result.content[0].text
+    assert "word_live_edit_batch" in text
+    assert "word_live_capture_pages" in text
+
+
+@pytest.mark.asyncio
 async def test_code_mode_edits_and_merges_real_documents(tmp_path) -> None:
     first = tmp_path / "first.docx"
     second = tmp_path / "second.docx"

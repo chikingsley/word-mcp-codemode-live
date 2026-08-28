@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from pathlib import Path
 
 import pytest
@@ -19,15 +20,9 @@ def _make_sample_docx(path: Path) -> None:
     doc.save(str(path))
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Microsoft Word COM requires Windows")
 def test_convert_to_pdf_with_temp_docx(tmp_path: Path):
-    """
-    End-to-end test: Create a temporary .docx -> call convert_to_pdf -> validate the PDF output.
-
-    Notes:
-    - On Linux/macOS, it first tries LibreOffice (soffice/libreoffice),
-      and falls back to docx2pdf on failure (requires Microsoft Word).
-    - If these tools are missing or the command is unavailable, the test is skipped with a reason.
-    """
+    """Create a DOCX and verify Microsoft Word exports the requested PDF path."""
     # 1) Generate a docx file with spaces in its name in the temp directory
     src_doc = tmp_path / "sample document with spaces.docx"
     _make_sample_docx(src_doc)
@@ -38,45 +33,11 @@ def test_convert_to_pdf_with_temp_docx(tmp_path: Path):
     # 3) Run the asynchronous function under test
     result_msg = asyncio.run(convert_to_pdf(str(src_doc), output_filename=str(out_pdf)))
 
-    # 4) Success condition: the return message contains success keywords, or the target PDF exists
-    success_keywords = ["successfully converted", "converted to PDF"]
-    success = any(k.lower() in result_msg.lower() for k in success_keywords) or out_pdf.exists()
-
-    if not success:
-        # When LibreOffice or Microsoft Word is not installed, the tool returns a hint.
-        # In this case, skip the test instead of failing.
+    if not out_pdf.exists():
         pytest.skip(f"PDF conversion tool unavailable or conversion failed: {result_msg}")
 
-    # 5) Assert: The PDF file was generated and is not empty
-    # Some environments (especially docx2pdf) might ignore the exact output filename
-    # and just generate a PDF with the same name as the source in the output or source directory,
-    # so we check multiple possible locations.
-    candidates = [
-        out_pdf,
-        # Common: A PDF with the same name as the source file in the output directory
-        out_pdf.parent / f"{src_doc.stem}.pdf",
-        # Fallback: A PDF in the same directory as the source file
-        src_doc.with_suffix(".pdf"),
-    ]
-
-    # If none of the above paths exist, search for any newly generated PDF in the temp directory
-    found = None
-    for p in candidates:
-        if p.exists():
-            found = p
-            break
-    if not found:
-        pdfs = sorted(tmp_path.glob("*.pdf"), key=lambda p: p.stat().st_mtime, reverse=True)
-        if pdfs:
-            found = pdfs[0]
-
-    if not found:
-        # If the tool returns success but the output can't be found,
-        # treat it as an environment/tooling difference and skip instead of failing.
-        pytest.skip(f"Could not find the generated PDF. Function output: {result_msg}")
-
-    assert found.exists(), f"Generated PDF not found: {found}, function output: {result_msg}"
-    assert found.stat().st_size > 0, f"The generated PDF file is empty: {found}"
+    assert "successfully converted" in result_msg.lower()
+    assert out_pdf.stat().st_size > 0
 
 
 if __name__ == "__main__":

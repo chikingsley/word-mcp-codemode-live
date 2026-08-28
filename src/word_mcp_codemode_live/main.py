@@ -2,11 +2,13 @@
 
 import logging
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
 from fastmcp import FastMCP
 from fastmcp.experimental.transforms.code_mode import CodeMode, GetSchemas, Search
+from fastmcp.tools.base import Tool
 
 from word_mcp_codemode_live.registry import register_tools
 from word_mcp_codemode_live.utils.path_utils import install_path_hook
@@ -15,6 +17,22 @@ from word_mcp_codemode_live.utils.save_utils import install_save_hook
 Transport = Literal["stdio", "http"]
 ToolMode = Literal["code", "full"]
 LOGGER = logging.getLogger(__name__)
+
+
+class WordCodeMode(CodeMode):
+    """Code Mode with direct access to the two image-producing workflows.
+
+    Nested tool calls made through ``execute`` intentionally unwrap results to
+    structured data, which drops MCP image content. Exposing these two workflows
+    directly keeps the general catalog compact while allowing clients to receive
+    the rendered Word pages.
+    """
+
+    DIRECT_TOOLS = frozenset({"word_live_edit_batch", "word_live_capture_pages"})
+
+    async def transform_tools(self, tools: Sequence[Tool]) -> Sequence[Tool]:
+        code_tools = list(await super().transform_tools(tools))
+        return [*code_tools, *(tool for tool in tools if tool.name in self.DIRECT_TOOLS)]
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +67,7 @@ def create_server(*, tool_mode: ToolMode | None = None) -> FastMCP:
     install_save_hook()
     install_path_hook()
     transforms = (
-        [CodeMode(discovery_tools=[Search(default_limit=5), GetSchemas()])]
+        [WordCodeMode(discovery_tools=[Search(default_limit=5), GetSchemas()])]
         if selected_mode == "code"
         else []
     )
