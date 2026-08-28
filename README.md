@@ -85,6 +85,17 @@ uv run pytest
 uv build --no-sources
 ```
 
+Pushes to `main` run the same checks in GitHub Actions. If the version in
+`pyproject.toml` does not yet exist on PyPI, the workflow publishes it with
+PyPI Trusted Publishing. Bump the version before a release:
+
+```bash
+uv version --bump patch
+git add pyproject.toml uv.lock
+git commit -m "release: bump version"
+git push
+```
+
 Source lives under `src/word_mcp_codemode_live/`. Tool implementations are
 grouped by domain in `tools/`, lower-level Word and OOXML operations live in
 `core/`, and `registry.py` defines the internal tool catalog used by Code Mode.
