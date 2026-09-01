@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "word-mcp-codemode-live"
-version = "0.1.1"
+version = "0.1.2"
 description = "Code Mode MCP server for fast, verified Microsoft Word editing on Windows"
 readme = "README.md"
 maintainers = [{ name = "chikingsley" }]

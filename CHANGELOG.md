@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [0.1.1] - Unreleased
+## [0.1.2] - 2026-09-01
 
 ### Changed
 
@@ -87,5 +87,5 @@ All notable changes to this project are documented here.
 - Forked and renamed the distribution as `word-mcp-codemode-live`.
 - Migrated to a uv-native `src/` layout with FastMCP Code Mode as the default.
 
-[0.1.1]: https://github.com/chikingsley/word-mcp-codemode-live/compare/v0.1.0...HEAD
+[0.1.2]: https://github.com/chikingsley/word-mcp-codemode-live/compare/7c3c69c...v0.1.2
 [0.1.0]: https://github.com/chikingsley/word-mcp-codemode-live/releases/tag/v0.1.0

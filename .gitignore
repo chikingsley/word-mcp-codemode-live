@@ -8,6 +8,8 @@ __pycache__/
 *.py[oc]
 .pytest_cache/
 .ruff_cache/
+.coverage
+htmlcov/
 build/
 dist/
 wheels/
