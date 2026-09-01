@@ -2,8 +2,58 @@
 Style-related functions for Word Document Server.
 """
 
+import logging
+
 from docx.enum.style import WD_STYLE_TYPE
-from docx.shared import Pt
+from docx.shared import Pt, RGBColor
+
+logger = logging.getLogger(__name__)
+
+
+_NAMED_COLORS = {
+    "red": RGBColor(255, 0, 0),
+    "blue": RGBColor(0, 0, 255),
+    "green": RGBColor(0, 128, 0),
+    "yellow": RGBColor(255, 255, 0),
+    "black": RGBColor(0, 0, 0),
+    "gray": RGBColor(128, 128, 128),
+    "white": RGBColor(255, 255, 255),
+    "purple": RGBColor(128, 0, 128),
+    "orange": RGBColor(255, 165, 0),
+}
+
+
+def _set_font_properties(style, properties) -> None:
+    font = style.font
+    direct_properties = {"bold": "bold", "italic": "italic", "name": "name"}
+    for source, target in direct_properties.items():
+        if source in properties:
+            setattr(font, target, properties[source])
+    if "size" in properties:
+        font.size = Pt(properties["size"])
+    if "color" in properties:
+        font.color.rgb = _docx_color(properties["color"])
+
+
+def _docx_color(value):
+    if isinstance(value, str) and value.lower() in _NAMED_COLORS:
+        return _NAMED_COLORS[value.lower()]
+    if hasattr(value, "rgb"):
+        return value
+    if isinstance(value, str):
+        try:
+            return RGBColor.from_string(value)
+        except ValueError:
+            return _NAMED_COLORS["black"]
+    return value
+
+
+def _set_paragraph_properties(style, properties) -> None:
+    paragraph = style.paragraph_format
+    if "alignment" in properties:
+        paragraph.alignment = properties["alignment"]
+    if "spacing" in properties:
+        paragraph.line_spacing = properties["spacing"]
 
 
 def ensure_heading_style(doc):
@@ -31,9 +81,9 @@ def ensure_heading_style(doc):
                 else:
                     style.font.size = Pt(12)
                     style.font.bold = True
-            except Exception:
+            except Exception as exc:
                 # If style creation fails, we'll just use default formatting
-                pass
+                logger.warning("Could not create %s; using default formatting: %s", style_name, exc)
 
 
 def ensure_table_style(doc):
@@ -68,8 +118,6 @@ def create_style(
     Returns:
         The created style
     """
-    from docx.shared import Pt
-
     try:
         # Check if style already exists
         style = doc.styles.get_by_id(style_name, WD_STYLE_TYPE.PARAGRAPH)
@@ -82,56 +130,11 @@ def create_style(
         if base_style:
             new_style.base_style = doc.styles[base_style]
 
-        # Set font properties
         if font_properties:
-            font = new_style.font
-            if "bold" in font_properties:
-                font.bold = font_properties["bold"]
-            if "italic" in font_properties:
-                font.italic = font_properties["italic"]
-            if "size" in font_properties:
-                font.size = Pt(font_properties["size"])
-            if "name" in font_properties:
-                font.name = font_properties["name"]
-            if "color" in font_properties:
-                from docx.shared import RGBColor
-
-                # Define common RGB colors
-                color_map = {
-                    "red": RGBColor(255, 0, 0),
-                    "blue": RGBColor(0, 0, 255),
-                    "green": RGBColor(0, 128, 0),
-                    "yellow": RGBColor(255, 255, 0),
-                    "black": RGBColor(0, 0, 0),
-                    "gray": RGBColor(128, 128, 128),
-                    "white": RGBColor(255, 255, 255),
-                    "purple": RGBColor(128, 0, 128),
-                    "orange": RGBColor(255, 165, 0),
-                }
-
-                color_value = font_properties["color"]
-                try:
-                    # Handle string color names
-                    if isinstance(color_value, str) and color_value.lower() in color_map:
-                        font.color.rgb = color_map[color_value.lower()]
-                    # Handle RGBColor objects
-                    elif hasattr(color_value, "rgb"):
-                        font.color.rgb = color_value
-                    # Try to parse as RGB string
-                    elif isinstance(color_value, str):
-                        font.color.rgb = RGBColor.from_string(color_value)
-                    # Use directly if it's already an RGB value
-                    else:
-                        font.color.rgb = color_value
-                except Exception:
-                    # Fallback to black if all else fails
-                    font.color.rgb = RGBColor(0, 0, 0)
+            _set_font_properties(new_style, font_properties)
 
         # Set paragraph properties
         if paragraph_properties:
-            if "alignment" in paragraph_properties:
-                new_style.paragraph_format.alignment = paragraph_properties["alignment"]
-            if "spacing" in paragraph_properties:
-                new_style.paragraph_format.line_spacing = paragraph_properties["spacing"]
+            _set_paragraph_properties(new_style, paragraph_properties)
 
         return new_style

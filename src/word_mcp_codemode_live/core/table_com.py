@@ -1,9 +1,13 @@
 """Table manipulation helpers for Word COM automation.
 
 Pure synchronous functions that operate on Word Table COM objects.
-Used by live_tools.word_live_modify_table.
+Used by tools.tables.word_live_modify_table.
 All row/col indices are 1-based (Word COM standard).
 """
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_info(table):
@@ -33,8 +37,8 @@ def get_info(table):
     try:
         result["left_indent_points"] = table.Rows.LeftIndent
         result["horizontal_position_points"] = table.Range.Information(5)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Optional table position properties are unavailable: %s", exc)
     return result
 
 
@@ -258,7 +262,8 @@ def delete_table(table, scrub_orphans: bool = True):
                 for t in doc.Tables:
                     try:
                         in_table_ranges.append((t.Range.Start, t.Range.End))
-                    except Exception:
+                    except Exception as exc:
+                        logger.debug("Could not inspect surviving table range: %s", exc)
                         continue
                 window = doc.Range(scan_start, scan_end)
                 text = window.Text or ""
@@ -273,11 +278,13 @@ def delete_table(table, scrub_orphans: bool = True):
                     try:
                         doc.Range(pos, pos + 1).Delete()
                         scrubbed += 1
-                    except Exception:
-                        pass
-        except Exception:
+                    except Exception as exc:
+                        logger.warning(
+                            "Could not remove orphan table separator at %s: %s", pos, exc
+                        )
+        except Exception as exc:
             # Best-effort cleanup; never fail the delete itself.
-            pass
+            logger.warning("Could not scan for orphan table separators: %s", exc)
     return {
         "deleted": True,
         "had_rows": rows,

@@ -4,7 +4,6 @@ File utility functions for Word Document Server.
 
 import asyncio
 import os
-import shutil
 import sys
 
 # Per-file locks to prevent concurrent read-modify-write on the same document
@@ -60,35 +59,6 @@ def check_file_writeable(filepath: str) -> tuple[bool, str]:
         return False, f"Unknown error checking file permissions: {str(e)}"
 
 
-def create_document_copy(
-    source_path: str, dest_path: str | None = None
-) -> tuple[bool, str, str | None]:
-    """
-    Create a copy of a document.
-
-    Args:
-        source_path: Path to the source document
-        dest_path: Optional path for the new document. If not provided, will use source_path + '_copy.docx'
-
-    Returns:
-        Tuple of (success, message, new_filepath)
-    """
-    if not os.path.exists(source_path):
-        return False, f"Source document {source_path} does not exist", None
-
-    if not dest_path:
-        # Generate a new filename if not provided
-        base, ext = os.path.splitext(source_path)
-        dest_path = f"{base}_copy{ext}"
-
-    try:
-        # Simple file copy
-        shutil.copy2(source_path, dest_path)
-        return True, f"Document copied to {dest_path}", dest_path
-    except Exception as e:
-        return False, f"Failed to copy document: {str(e)}", None
-
-
 def ensure_docx_extension(filename: str) -> str:
     """
     Ensure filename has .docx extension.
@@ -99,6 +69,6 @@ def ensure_docx_extension(filename: str) -> str:
     Returns:
         Filename with .docx extension
     """
-    if not filename.endswith(".docx"):
+    if not filename.casefold().endswith(".docx"):
         return filename + ".docx"
     return filename

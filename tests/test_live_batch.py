@@ -1,3 +1,4 @@
+import gc
 import json
 import sys
 from pathlib import Path
@@ -9,20 +10,22 @@ from fastmcp import Client
 
 from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.main import create_server
-from word_mcp_codemode_live.tools import live_batch_tools, live_read_tools
-from word_mcp_codemode_live.tools.page_capture_tools import RenderedPage
+from word_mcp_codemode_live.tools import batch as live_batch_tools
+from word_mcp_codemode_live.tools.capture import RenderedPage
 
 
 class _UndoRecord:
     IsRecordingCustomRecord = False
 
-    def __init__(self) -> None:
+    def __init__(self, control: SimpleNamespace) -> None:
+        self.control = control
         self.started = 0
         self.ended = 0
 
     def StartCustomRecord(self, _name: str) -> None:
         self.started += 1
         self.IsRecordingCustomRecord = True
+        self.control.List = lambda _index: _name
 
     def EndCustomRecord(self) -> None:
         self.ended += 1
@@ -56,14 +59,20 @@ class _Document:
         self.Content.Text = "before"
         return True
 
+    def Activate(self) -> None:
+        pass
+
 
 class _App:
     ScreenUpdating = True
 
     def __init__(self, document: _Document) -> None:
         self.document = document
+        self.ActiveDocument = document
         self.Options = SimpleNamespace(Pagination=True)
-        self.UndoRecord = _UndoRecord()
+        control = SimpleNamespace(ListCount=1, List=lambda _index: "MCP: Batch Edit")
+        self.CommandBars = SimpleNamespace(FindControl=lambda **_kwargs: control)
+        self.UndoRecord = _UndoRecord(control)
 
 
 @pytest.mark.asyncio
@@ -78,13 +87,9 @@ async def test_batch_edits_save_once_and_return_a_page(monkeypatch) -> None:
             pass
         return json.dumps({"success": True})
 
-    async def fake_layout(filename: str | None = None) -> str:
-        return json.dumps({"document": filename, "issues": []})
-
-    monkeypatch.setattr(live_batch_tools, "_tool_catalog", lambda: {"fake_edit": fake_edit})
+    monkeypatch.setattr(live_batch_tools, "_batch_tools", lambda: {"fake_edit": fake_edit})
     monkeypatch.setattr(word_com, "get_word_app", lambda: app)
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
-    monkeypatch.setattr(live_read_tools, "word_live_diagnose_layout", fake_layout)
     monkeypatch.setattr(
         live_batch_tools,
         "render_word_pages",
@@ -96,11 +101,14 @@ async def test_batch_edits_save_once_and_return_a_page(monkeypatch) -> None:
         filename="batch-test.docx",
         contains_text=["after"],
         absent_text=["before"],
+        capture_pages=[1],
     )
 
-    assert result.structured_content["success"] is True
-    assert result.structured_content["captured_pages"] == [1]
-    assert result.structured_content["timings"]["total_seconds"] >= 0
+    structured = result.structured_content
+    assert structured is not None
+    assert structured["success"] is True
+    assert structured["captured_pages"] == [1]
+    assert structured["timings"]["total_seconds"] >= 0
     assert document.saved_count == 1
     assert app.UndoRecord.started == 1
     assert app.UndoRecord.ended == 1
@@ -120,7 +128,7 @@ async def test_batch_rolls_back_when_an_operation_fails(monkeypatch) -> None:
 
     monkeypatch.setattr(
         live_batch_tools,
-        "_tool_catalog",
+        "_batch_tools",
         lambda: {"fake_edit": fake_edit, "fake_error": fake_error},
     )
     monkeypatch.setattr(word_com, "get_word_app", lambda: app)
@@ -135,8 +143,10 @@ async def test_batch_rolls_back_when_an_operation_fails(monkeypatch) -> None:
     )
 
     assert result.is_error is True
-    assert result.structured_content["rolled_back"] is True
-    assert result.structured_content["failed_operation"] == 1
+    structured = result.structured_content
+    assert structured is not None
+    assert structured["rolled_back"] is True
+    assert structured["failed_operation"] == 1
     assert document.Content.Text == "before"
     assert document.saved_count == 0
     assert document.undo_count == 1
@@ -151,7 +161,7 @@ async def test_batch_rejects_unknown_tools_before_editing(monkeypatch) -> None:
         document.Content.Text = value
         return json.dumps({"success": True})
 
-    monkeypatch.setattr(live_batch_tools, "_tool_catalog", lambda: {"fake_edit": fake_edit})
+    monkeypatch.setattr(live_batch_tools, "_batch_tools", lambda: {"fake_edit": fake_edit})
     monkeypatch.setattr(word_com, "get_word_app", lambda: app)
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
 
@@ -164,9 +174,67 @@ async def test_batch_rejects_unknown_tools_before_editing(monkeypatch) -> None:
     )
 
     assert result.is_error is True
-    assert result.structured_content["rolled_back"] is False
+    structured = result.structured_content
+    assert structured is not None
+    assert structured["rolled_back"] is False
     assert document.Content.Text == "before"
     assert document.undo_count == 0
+
+
+@pytest.mark.asyncio
+async def test_batch_rejects_string_boolean_before_editing(monkeypatch) -> None:
+    document = _Document()
+    app = _App(document)
+
+    async def fake_edit(enabled: bool, filename: str | None = None) -> str:
+        document.Content.Text = str(enabled)
+        return json.dumps({"success": True})
+
+    monkeypatch.setattr(live_batch_tools, "_batch_tools", lambda: {"fake_edit": fake_edit})
+    monkeypatch.setattr(word_com, "get_word_app", lambda: app)
+    monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
+
+    result = await live_batch_tools.word_live_edit_batch(
+        [{"tool": "fake_edit", "arguments": {"enabled": "false"}}],
+        filename="batch-test.docx",
+    )
+
+    assert result.is_error is True
+    structured = result.structured_content
+    assert structured is not None
+    assert "requires JSON boolean" in structured["error"]
+    assert document.Content.Text == "before"
+    assert document.undo_count == 0
+
+
+@pytest.mark.asyncio
+async def test_batch_rejects_nested_filename_before_editing(monkeypatch) -> None:
+    document = _Document()
+    app = _App(document)
+
+    async def fake_edit(value: str, filename: str | None = None) -> str:
+        document.Content.Text = value
+        return json.dumps({"success": True})
+
+    monkeypatch.setattr(live_batch_tools, "_batch_tools", lambda: {"fake_edit": fake_edit})
+    monkeypatch.setattr(word_com, "get_word_app", lambda: app)
+    monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
+
+    result = await live_batch_tools.word_live_edit_batch(
+        [
+            {
+                "tool": "fake_edit",
+                "arguments": {"value": "wrong", "filename": "other.docx"},
+            }
+        ],
+        filename="batch-test.docx",
+    )
+
+    assert result.is_error is True
+    structured = result.structured_content
+    assert structured is not None
+    assert "batch-level filename" in structured["error"]
+    assert document.Content.Text == "before"
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Microsoft Word COM requires Windows")
@@ -229,5 +297,8 @@ async def test_batch_groups_real_word_edits_and_renders_page(tmp_path: Path) -> 
     finally:
         if document is not None:
             document.Close(SaveChanges=False)
-        app.Quit(SaveChanges=False)
+            document = None
         word_com._WORD_APP = None
+        gc.collect()
+        app.Quit(SaveChanges=False)
+        app = None

@@ -3,9 +3,12 @@ name: Publish to PyPI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
 
 concurrency:
-  group: pypi-publish
+  group: verify-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -48,12 +51,26 @@ jobs:
       - name: Build distributions
         run: uv build --no-sources
 
+      - name: Verify isolated built wheel
+        run: uv run python .github/ci/verify_built_wheel.py
+
       - name: Check whether this version is new
         id: version
         shell: pwsh
+        env:
+          IS_RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          if ($env:IS_RELEASE_TAG -ne "true") {
+            "should_publish=false" >> $env:GITHUB_OUTPUT
+            Write-Output "Verification-only run; PyPI publication requires a v* tag."
+            exit 0
+          }
           $version = uv version --short
           "version=$version" >> $env:GITHUB_OUTPUT
+          if ($env:RELEASE_TAG -ne "v$version") {
+            throw "Release tag $env:RELEASE_TAG must match package version v$version"
+          }
           $response = Invoke-WebRequest `
             -Uri "https://pypi.org/pypi/word-mcp-codemode-live/$version/json" `
             -SkipHttpErrorCheck
@@ -77,22 +94,17 @@ jobs:
     needs: build
     if: needs.build.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     environment:
       name: pypi
       url: https://pypi.org/project/word-mcp-codemode-live/
     steps:
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-        with:
-          enable-cache: false
-
       - name: Download distributions
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: distributions
           path: dist/
 
-      - name: Publish with uv
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: uv publish
+      - name: Publish with PyPI Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1

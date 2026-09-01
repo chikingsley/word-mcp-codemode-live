@@ -1,0 +1,1233 @@
+{
+  "metadata": {
+    "generated_at": "2026-08-31 15:48:47 -0700",
+    "registered_tools": 78,
+    "python": "3.14.7 (main, Aug 25 2026, 14:01:25) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "word_version": "16.0",
+    "package_version": "0.1.1",
+    "fastmcp_version": "4.0.0",
+    "mcp_version": "2.1.1",
+    "git_commit": "7c3c69caced32a51cec0ef33bc3e4a2e454a41e0",
+    "git_dirty": true,
+    "source_fingerprint_sha256": "e488d9b8b832514f63510192b2cb1b85b08410cce1f9b6db2033b419df07626d",
+    "verifier_sha256": "33a09c01554ea8a116fdad4214efa17d354a02c5445879fb85ab7a38a5fba0aa",
+    "transport": "FastMCP Client in-memory transport",
+    "temporary_documents_retained": false
+  },
+  "summary": {
+    "total": 78,
+    "passed": 78,
+    "failed": 0,
+    "not_run": 0,
+    "workflow_total": 2,
+    "workflow_passed": 2,
+    "workflow_failed": 0
+  },
+  "results": [
+    {
+      "tool": "word_live_edit_batch",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.512,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "document contains 'Batch verified'=True; MCP images=1",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"undo_name\": \"MCP: Batch Edit\", \"undo_record_name\": \"MCP: Batch Edit [43714b61]\", \"operation_count\": 1, \"operations\": [{\"tool\": \"word_live_replace_text\", \"result\": {\"success\": true, \"document\": \"case.docx\", \"find_text\": \"Alpha marker\", \"replace_text\": \"Batch verified\", \"replacements\": 1, \"replace_all\": true, \"tracked\": false}}], \"before\": {\"pages\": 1, \"words\": 14, \"paragraphs\": 10, \"tables\": 1, \"sections\": 1, \"saved\": true}, \"after\": {\"pages\": 1, \"words\": 14, \"paragraphs\": 10, \"tables\": 1, \"sections\": 1, \"saved\": true}, \"affected_pages\": [1], \"captured_pages\": [1], \"timings\": {\"edit_seconds\": 0.1431, \"repaginate_seconds\": 0.0018, \"verify_seconds\": 0.0, \"capture_seconds\": 0.2434, \"total_seconds\": 0.6343}}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_edit_batch\\case.docx",
+        "operations": [
+          {
+            "tool": "word_live_replace_text",
+            "arguments": {
+              "find_text": "Alpha marker",
+              "replace_text": "Batch verified"
+            }
+          }
+        ],
+        "contains_text": [
+          "Batch verified"
+        ],
+        "absent_text": [
+          "Alpha marker"
+        ],
+        "capture_pages": [
+          1
+        ]
+      }
+    },
+    {
+      "tool": "word_live_capture_pages",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.116,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "captured_pages=[1]; MCP images=1",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"total_pages\": 1, \"pages\": [{\"page\": 1, \"width\": 816, \"height\": 1056, \"path\": null}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_capture_pages\\case.docx",
+        "pages": [
+          1
+        ],
+        "dpi": 96
+      }
+    },
+    {
+      "tool": "word_live_add_comment",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.718,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word comment count=2",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"comment_index\": 2, \"document_index\": 2, \"author\": \"Capability Verifier\", \"text\": \"Added comment\"}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_add_comment\\case.docx",
+        "paragraph_index": 2,
+        "text": "Added comment",
+        "author": "Capability Verifier"
+      }
+    },
+    {
+      "tool": "word_live_delete_comment",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.829,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word comment count=0",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"deleted_comment_index\": 1, \"deleted_comment_text\": \"Seed comment\", \"deleted_replies\": 0, \"remaining_comments\": 0, \"remaining_raw_comments\": 0}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_delete_comment\\case.docx",
+        "comment_index": 1,
+        "delete_replies": true
+      }
+    },
+    {
+      "tool": "word_live_get_comments",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.98,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "payload threads=1; raw Word comments=2",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"comment_count\": 1, \"raw_comment_count\": 2, \"comments\": [{\"index\": 1, \"document_index\": 1, \"author\": \"Chibuzor Ejimofor (Cicahuntek)\", \"date\": \"2026-08-31 15:47:00+00:00\", \"text\": \"Seed comment\", \"scope\": \"Alpha marker\", \"resolved\": false, \"replies\": [{\"index\": 1, \"document_index\": 2, \"author\": \"Chibuzor Ejimofor (Cicahuntek)\", \"date\": \"2026-08-31 15:47:00+00:00\", \"text\": \"Seed reply\"}], \"reply_count\": 1}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_get_comments\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_reply_to_comment",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.774,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word reply count=1",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"comment_index\": 1, \"reply_text\": \"Verification reply\", \"reply_index\": 1, \"reply_document_index\": 2, \"author\": \"Capability Verifier\"}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_reply_to_comment\\case.docx",
+        "comment_index": 1,
+        "text": "Verification reply",
+        "author": "Capability Verifier"
+      }
+    },
+    {
+      "tool": "word_live_set_comment_status",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.935,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "payload resolved=True; Word Done=True",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"comment_index\":1,\"previous_resolved\":false,\"resolved\":true,\"changed\":true}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_set_comment_status\\case.docx",
+        "comment_index": 1,
+        "resolved": true
+      }
+    },
+    {
+      "tool": "word_live_delete_text",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.017,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "document excludes 'Gamma marker'=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"deleted_text\": \"Gamma marker\", \"range\": \"26-38\", \"tracked\": false}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_delete_text\\case.docx",
+        "start": 26,
+        "end": 38
+      }
+    },
+    {
+      "tool": "word_live_insert_equation",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.999,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word equation count=1",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"equation\": \"x^2 + y^2 = z^2\", \"display_mode\": true, \"omath_count\": 1}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_insert_equation\\case.docx",
+        "equation": "x^2 + y^2 = z^2",
+        "position": "end",
+        "display_mode": true
+      }
+    },
+    {
+      "tool": "word_live_insert_image",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.779,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word inline_shapes=1; shapes=0",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"image\": \"verification.png\", \"width_pt\": 108.0, \"height_pt\": 53.95000076293945, \"alignment\": \"center\", \"wrapping\": \"inline\", \"border\": \"none\", \"linked\": false}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_insert_image\\case.docx",
+        "image_path": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\verification.png",
+        "position": "end",
+        "width_inches": 1.5,
+        "alignment": "center"
+      }
+    },
+    {
+      "tool": "word_live_insert_page_break",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.785,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word pages=2; page break present=True",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"insertion_offset\":73,\"target\":{\"kind\":\"end\",\"character_offset\":73},\"pages_before\":1,\"pages_after\":2}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_insert_page_break\\case.docx",
+        "position": "end"
+      }
+    },
+    {
+      "tool": "word_live_insert_paragraphs",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.743,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "document contains 'Inserted paragraph'=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"paragraphs_inserted\": 1, \"position\": \"after\", \"style\": \"Normal\", \"tracked\": false}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_insert_paragraphs\\case.docx",
+        "paragraphs": [
+          "Inserted paragraph"
+        ],
+        "target_paragraph_index": 1,
+        "position": "after"
+      }
+    },
+    {
+      "tool": "word_live_insert_text",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.739,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "document contains 'Inserted marker'=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"text_length\": 15, \"position\": \"end\", \"tracked\": false}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_insert_text\\case.docx",
+        "text": "Inserted marker",
+        "position": "end"
+      }
+    },
+    {
+      "tool": "word_live_replace_text",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.754,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "document contains 'Alpha replaced'=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"find_text\": \"Alpha marker\", \"replace_text\": \"Alpha replaced\", \"replacements\": 1, \"replace_all\": true, \"tracked\": false}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_replace_text\\case.docx",
+        "find_text": "Alpha marker",
+        "replace_text": "Alpha replaced"
+      }
+    },
+    {
+      "tool": "word_live_insert_cross_reference",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.839,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word main-story fields=1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"reference_type\":\"heading\",\"reference_kind\":\"content_text\",\"target\":{\"reference_type\":\"heading\",\"target_index\":1,\"label\":\"Alpha marker\"},\"inserted_at\":{\"document_position\":\"end\"},\"insert_as_hyperlink\":true,\"include_position\":false}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_insert_cross_reference\\case.docx",
+        "reference_type": "heading",
+        "target_index": 1,
+        "reference_kind": "content_text",
+        "position": "end"
+      }
+    },
+    {
+      "tool": "word_live_list_cross_reference_targets",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.653,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "native heading targets=1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"reference_type\":\"heading\",\"count\":1,\"targets\":[{\"reference_type\":\"heading\",\"target_index\":1,\"label\":\"Alpha marker\"}],\"index_stability\":\"native_list_position; rediscover after target edits\"}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_list_cross_reference_targets\\case.docx",
+        "reference_type": "heading"
+      }
+    },
+    {
+      "tool": "convert_to_pdf",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport)",
+      "elapsed_seconds": 2.205,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "PDF exists=True; bytes=113719",
+      "response_excerpt": "Document successfully converted to PDF: C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\converted.pdf",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\closed-source.docx",
+        "output_filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\converted.pdf"
+      }
+    },
+    {
+      "tool": "word_live_list_fields",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.895,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "listed fields=2",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"field_count\":2,\"fields\":[{\"index\":1,\"story\":\"main_text\",\"story_type_id\":1,\"story_instance_index\":1,\"story_field_index\":1,\"type\":\"date\",\"type_id\":31,\"code_start_offset\":74,\"code_end_offset\":95,\"result_available\":true,\"result_start_offset\":96,\"result_end_offset\":105,\"code\":\" DATE \\\\* MERGEFORMAT \",\"result\":\"8/31/2026\",\"locked\":false},{\"index\":2,\"story\":\"main_text\",\"story_type_id\":1,\"story_instance_index\":1,\"story_field_index\":2,\"type\":\"index_entry\",\"type_id\":4,\"code_start_offset\":107,\"code_end_offset\":145,\"result_available\":false,\"result_start_offset\":null,\"result_end_offset\":null,\"code\":\" XE \\\"Capability Entry\\\" \\\\* MERGEFORMAT \",\"result\":null,\"locked\":false}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_list_fields\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_unlink_fields",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.211,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "unlinked fields=2; Word main fields=0",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"available_field_count\":2,\"unlinked_count\":2,\"unlinked_fields\":[{\"index\":1,\"story\":\"main_text\",\"type\":\"date\",\"result\":\"8/31/2026\"},{\"index\":2,\"story\":\"main_text\",\"type\":\"sequence\",\"result\":\"1\"}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_unlink_fields\\case.docx",
+        "field_indices": [
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "tool": "word_live_update_fields",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.877,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "updated fields=1; result='8/31/2026'",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"available_field_count\":1,\"updated_count\":1,\"updated_fields\":[{\"index\":1,\"story\":\"main_text\",\"type\":\"date\",\"update_result\":true,\"result_available\":true,\"result\":\"8/31/2026\"}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_update_fields\\case.docx",
+        "field_indices": [
+          1
+        ]
+      }
+    },
+    {
+      "tool": "copy_document",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport)",
+      "elapsed_seconds": 0.007,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "copied file exists=True",
+      "response_excerpt": "{\"success\": true, \"source\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\closed-source.docx\", \"destination\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\copied.docx\"}",
+      "arguments": {
+        "source_filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\closed-source.docx",
+        "destination_filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\copied.docx"
+      }
+    },
+    {
+      "tool": "create_document",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport)",
+      "elapsed_seconds": 0.145,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "created file exists=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\created.docx\", \"overwritten\": false}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\created.docx",
+        "title": "Created verification"
+      }
+    },
+    {
+      "tool": "get_document_info",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport)",
+      "elapsed_seconds": 0.031,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "document='C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\closed-source.docx'; body_paragraphs=3",
+      "response_excerpt": "{\n  \"title\": \"\",\n  \"author\": \"python-docx\",\n  \"subject\": \"\",\n  \"keywords\": \"\",\n  \"created\": \"2013-12-23 23:15:00+00:00\",\n  \"modified\": \"2013-12-23 23:15:00+00:00\",\n  \"last_modified_by\": \"\",\n  \"revision\": 1,\n  \"section_count\": 1,\n  \"body_paragraph_word_count\": 6,\n  \"body_paragraph_count\": 3,\n  \"body_table_count\": 1,\n  \"document\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\closed-source.docx\",\n  \"count_scope\": \"top-level body paragraphs and tables only\"\n}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\closed-source.docx"
+      }
+    },
+    {
+      "tool": "list_available_documents",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport)",
+      "elapsed_seconds": 0.004,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "listed count=3",
+      "response_excerpt": "{\"success\": true, \"directory\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\", \"recursive\": false, \"count\": 3, \"documents\": [{\"path\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\closed-source.docx\", \"size_bytes\": 35472}, {\"path\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\copied.docx\", \"size_bytes\": 35472}, {\"path\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\created.docx\", \"size_bytes\": 35266}]}",
+      "arguments": {
+        "directory": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr",
+        "recursive": false
+      }
+    },
+    {
+      "tool": "word_live_format_text",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.994,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word bold=-1; size=15.0",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"range\": \"para 1-1\", \"text_preview\": \"Alpha marker\\r\", \"tracked\": false}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_format_text\\case.docx",
+        "start_paragraph": 1,
+        "end_paragraph": 1,
+        "bold": true,
+        "font_size": 15
+      }
+    },
+    {
+      "tool": "word_live_get_paragraph_format",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.544,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "payload success=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"paragraphs\": [{\"index\": 1, \"text_preview\": \"Alpha marker\", \"char_start\": 0, \"char_end\": 13, \"style\": \"Heading 1\", \"font_name\": \"Aptos Display\", \"font_size\": 20.0, \"bold\": false, \"italic\": false, \"alignment\": \"left\", \"space_before_pt\": 18.0, \"space_after_pt\": 4.0, \"line_spacing\": 13.899999618530273, \"line_spacing_rule\": \"multiple\", \"left_indent_pt\": 0.0, \"right_indent_pt\": 0.0, \"first_line_indent_pt\": 0.0, \"page_break_before\": false, \"keep_with_next\": true, \"keep_together\": true, \"horizontal_position_pt\": 72.0, \"highlight_color\": 0, \"runs\": [{\"text\": \"Alpha marker\\r\", \"bold\": false, \"italic\": false, \"font_name\": \"Aptos Display\", \"font_size\": 20.0}]}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_get_paragraph_format\\case.docx",
+        "start_paragraph": 1,
+        "end_paragraph": 1,
+        "include_runs": true
+      }
+    },
+    {
+      "tool": "word_live_edit_headers_footers",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.073,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word footer fields=2; text='Page 1 of 1\\r'",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"story_kind\": \"footer\", \"variant\": \"primary\", \"operation\": \"set\", \"results\": [{\"section\": 1, \"state\": {\"exists\": true, \"linked_to_previous\": false, \"text\": \"Page 1 of 1\", \"fields\": [{\"index\": 1, \"type\": \"page\", \"code\": \"PAGE  \\\\* MERGEFORMAT\", \"result\": \"1\"}, {\"index\": 2, \"type\": \"pages\", \"code\": \"NUMPAGES  \\\\* MERGEFORMAT\", \"result\": \"1\"}], \"alignment\": 1, \"font\": {\"name\": \"Aptos\", \"size\": 12.0, \"bold\": 0, \"italic\": 0, \"color\": null}, \"page_numbering\": {\"count\": 1, \"style\": \"arabic\", \"restart_at_section\": false, \"starting_number\": 0}}}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_edit_headers_footers\\case.docx",
+        "section": 1,
+        "story_kind": "footer",
+        "variant": "primary",
+        "operation": "set",
+        "content": "Page {page} of {pages}",
+        "alignment": "center",
+        "page_number_style": "arabic"
+      }
+    },
+    {
+      "tool": "word_live_get_headers_footers",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.393,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "returned native header and footer text",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"sections\": [{\"section\": 1, \"different_first_page\": false, \"different_odd_even\": false, \"headers\": {\"primary\": {\"exists\": true, \"linked_to_previous\": false, \"text\": \"Seed header\", \"fields\": [], \"alignment\": 0, \"font\": {\"name\": \"Aptos\", \"size\": 12.0, \"bold\": 0, \"italic\": 0, \"color\": null}, \"page_numbering\": {\"count\": 0, \"style\": \"arabic\", \"restart_at_section\": false, \"starting_number\": 0}}, \"first\": {\"exists\": false, \"linked_to_previous\": false, \"text\": \"\", \"fields\": [], \"alignment\": 0, \"font\": {\"name\": \"Aptos\", \"size\": 12.0, \"bold\": 0, \"italic\": 0, \"color\": null}, \"page_numbering\": {\"count\": 0, \"style\": \"arabic\", \"restart_at_section\": false, \"starting_number\": 0}}, \"even\": {\"exists\": false, \"linked_to_previous\": false, \"text\": \"\", \"fields\": [], \"alignment\": 0, \"font\": {\"name\": \"Aptos\", \"size\": 12.0, \"bold\": 0, \"italic\": 0, \"color\": null}, \"page_numbering\": {\"count\": 0, \"style\": \"arabic\", \"restart_at_section\": false, \"starting_number\": 0}}}, \"f",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_get_headers_footers\\case.docx",
+        "section": "all"
+      }
+    },
+    {
+      "tool": "word_live_inspect_highlighted_text",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 3.442,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "highlighted ranges=1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"highlight_count\":1,\"truncated\":false,\"highlights\":[{\"index\":1,\"story\":\"main_text\",\"story_type_id\":1,\"story_instance_index\":1,\"start_offset\":13,\"end_offset\":24,\"text\":\"Beta marker\",\"color_index\":7,\"color\":\"yellow\"}],\"searched_stories\":[{\"story\":\"main_text\",\"story_type_id\":1,\"story_instance_index\":1},{\"story\":\"footnotes\",\"story_type_id\":2,\"story_instance_index\":1},{\"story\":\"comments\",\"story_type_id\":4,\"story_instance_index\":1},{\"story\":\"even_pages_header\",\"story_type_id\":6,\"story_instance_index\":1},{\"story\":\"primary_header\",\"story_type_id\":7,\"story_instance_index\":1},{\"story\":\"even_pages_footer\",\"story_type_id\":8,\"story_instance_index\":1},{\"story\":\"primary_footer\",\"story_type_id\":9,\"story_instance_index\":1},{\"story\":\"first_page_header\",\"story_type_id\":10,\"story_instance_index\":1},{\"story\":\"first_page_footer\",\"story_type_id\":11,\"story_instance_index\":1},{\"story\":\"footnote_separator\",\"story_type_id\":12,\"story_instance_index\":1},{\"story\":\"footnote_con",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_inspect_highlighted_text\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_add_hyperlink",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.834,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word hyperlinks=1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"hyperlink\":{\"index\":1,\"address\":\"https://example.com/capability\",\"subaddress\":\"\",\"target_kind\":\"external\",\"display_text\":\"Capability link\",\"range\":{\"start\":118,\"end\":133}}}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_add_hyperlink\\case.docx",
+        "address": "https://example.com/capability",
+        "display_text": "Capability link"
+      }
+    },
+    {
+      "tool": "word_live_list_hyperlinks",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.758,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "payload hyperlinks=1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"hyperlink_count\":1,\"hyperlinks\":[{\"index\":1,\"address\":\"https://example.com/original\",\"subaddress\":\"\",\"target_kind\":\"external\",\"display_text\":\"Beta marker\",\"range\":{\"start\":56,\"end\":67}}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_list_hyperlinks\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_remove_hyperlink",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.934,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word hyperlinks=0; text preserved=True",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"removed_hyperlink\":{\"index\":1,\"address\":\"https://example.com/original\",\"subaddress\":\"\",\"target_kind\":\"external\",\"display_text\":\"Beta marker\",\"range\":{\"start\":56,\"end\":67}},\"remaining_hyperlinks\":0}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_remove_hyperlink\\case.docx",
+        "hyperlink_index": 1
+      }
+    },
+    {
+      "tool": "word_live_update_hyperlink",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.86,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word address='https://example.com/updated'",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"hyperlink\":{\"index\":1,\"address\":\"https://example.com/updated\",\"subaddress\":\"\",\"target_kind\":\"external\",\"display_text\":\"Beta marker\",\"range\":{\"start\":55,\"end\":66}}}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_update_hyperlink\\case.docx",
+        "hyperlink_index": 1,
+        "address": "https://example.com/updated"
+      }
+    },
+    {
+      "tool": "word_live_find_text",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.059,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "matches=1",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"search_text\": \"Beta marker\", \"match_count\": 1, \"matches\": [{\"start\": 13, \"end\": 24, \"text\": \"Beta marker\", \"context\": \"Alpha marker\\rBeta marker\\u0002\\rGamma marker\\rSeed A1\\r\\u0007Seed A2\\r\\u0007\\r\\u0007Seed B1\\r\\u0007Seed B2\\r\\u0007\\r\\u0007\\r\"}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_find_text\\case.docx",
+        "search_text": "Beta marker"
+      }
+    },
+    {
+      "tool": "word_live_get_info",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.983,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "payload success=True",
+      "response_excerpt": "{\"success\": true, \"name\": \"case.docx\", \"full_path\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\word_live_get_info\\\\case.docx\", \"pages\": 1, \"words\": 14, \"characters\": 57, \"lines\": 7, \"paragraphs\": 10, \"sections\": 1, \"tables\": 1, \"comments\": 1, \"track_revisions\": false, \"saved\": true, \"author\": \"Chibuzor Ejimofor (Cicahuntek)\", \"title\": \"Seed title\", \"subject\": \"\"}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_get_info\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_get_page_text",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.446,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "page result contains Alpha marker",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"pages\": \"1\", \"total_pages\": 1, \"paragraph_count\": 10, \"range_start\": 0, \"range_end\": 74, \"paragraphs\": [{\"index\": 1, \"text\": \"Alpha marker\", \"char_start\": 0, \"char_end\": 13}, {\"index\": 2, \"text\": \"Beta marker\\u0002\", \"char_start\": 13, \"char_end\": 26}, {\"index\": 3, \"text\": \"Gamma marker\", \"char_start\": 26, \"char_end\": 39}, {\"index\": 4, \"text\": \"Seed A1\", \"char_start\": 39, \"char_end\": 47}, {\"index\": 5, \"text\": \"Seed A2\", \"char_start\": 47, \"char_end\": 55}, {\"index\": 6, \"text\": \"\", \"char_start\": 55, \"char_end\": 56}, {\"index\": 7, \"text\": \"Seed B1\", \"char_start\": 56, \"char_end\": 64}, {\"index\": 8, \"text\": \"Seed B2\", \"char_start\": 64, \"char_end\": 72}, {\"index\": 9, \"text\": \"\", \"char_start\": 72, \"char_end\": 73}, {\"index\": 10, \"text\": \"\", \"char_start\": 73, \"char_end\": 74}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_get_page_text\\case.docx",
+        "page": 1
+      }
+    },
+    {
+      "tool": "word_live_get_text",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.151,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Alpha marker present in returned paragraphs",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"paragraph_count\": 10, \"paragraphs\": [{\"index\": 1, \"text\": \"Alpha marker\"}, {\"index\": 2, \"text\": \"Beta marker\\u0002\"}, {\"index\": 3, \"text\": \"Gamma marker\"}, {\"index\": 4, \"text\": \"Seed A1\"}, {\"index\": 5, \"text\": \"Seed A2\"}, {\"index\": 6, \"text\": \"\"}, {\"index\": 7, \"text\": \"Seed B1\"}, {\"index\": 8, \"text\": \"Seed B2\"}, {\"index\": 9, \"text\": \"\"}, {\"index\": 10, \"text\": \"\"}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_get_text\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_add_bookmark",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.732,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word bookmark exists=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"bookmark_name\": \"CapabilityBookmark\", \"paragraph_index\": 2}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_add_bookmark\\case.docx",
+        "paragraph_index": 2,
+        "bookmark_name": "CapabilityBookmark"
+      }
+    },
+    {
+      "tool": "word_live_add_section_break",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.781,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word section count=2",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"break_type\": \"new_page\", \"position\": 26, \"total_sections\": 2}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_add_section_break\\case.docx",
+        "break_type": "new_page",
+        "paragraph_index": 3
+      }
+    },
+    {
+      "tool": "word_live_add_watermark",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.125,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word header shape count=1",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"text\": \"VERIFY\", \"font_size\": 72, \"color\": \"C0C0C0\", \"rotation\": -45, \"section\": 1}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_add_watermark\\case.docx",
+        "text": "VERIFY",
+        "section_index": 1
+      }
+    },
+    {
+      "tool": "word_live_set_page_layout",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.536,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word orientation=1; left_margin=57.599998474121094",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"section\": 1, \"changes\": [\"orientation=landscape\", \"margin_left=0.8in\"]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_set_page_layout\\case.docx",
+        "section_index": 1,
+        "orientation": "landscape",
+        "margin_left_inches": 0.8
+      }
+    },
+    {
+      "tool": "word_live_set_paragraph_spacing",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.708,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word space_after=18.0; alignment=1",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"paragraphs_affected\": 1}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_set_paragraph_spacing\\case.docx",
+        "paragraph_index": 2,
+        "space_after_pt": 18,
+        "alignment": "center"
+      }
+    },
+    {
+      "tool": "word_live_inspect_layout",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 2.351,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "pages=3; sections=2; manual_offsets=[29]; expected_manual_offsets=[29]; section_offsets=[15]; section2 start/end pages=2/3",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"page_count\":3,\"section_count\":2,\"paragraph_count\":12,\"sections\":[{\"index\":1,\"start_offset\":0,\"end_offset\":16,\"start_page\":1,\"start_type\":\"new_page\",\"start_type_id\":2,\"orientation\":\"portrait\",\"page_width_points\":612.0,\"page_height_points\":792.0,\"margins_points\":{\"top\":72.0,\"bottom\":72.0,\"left\":72.0,\"right\":72.0,\"gutter\":36.0,\"gutter_position\":\"top\",\"gutter_position_id\":1},\"usable_width_points\":468.0,\"usable_height_points\":612.0},{\"index\":2,\"start_offset\":16,\"end_offset\":79,\"start_page\":2,\"start_type\":\"new_page\",\"start_type_id\":2,\"orientation\":\"portrait\",\"page_width_points\":612.0,\"page_height_points\":792.0,\"margins_points\":{\"top\":72.0,\"bottom\":72.0,\"left\":72.0,\"right\":72.0,\"gutter\":0.0,\"gutter_position\":\"top\",\"gutter_position_id\":1},\"usable_width_points\":468.0,\"usable_height_points\":648.0}],\"manual_page_break_count\":1,\"manual_page_break_offsets\":[29],\"controlled_paragraph_count\":12,\"controlled_paragraphs\":[{\"paragraph_index\":1,\"start_offset\":0,\"end",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_inspect_layout\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_close",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.113,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "closed=True; saved file exists=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"close-target.docx\", \"path\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\close-target.docx\", \"save_mode\": \"require_saved\", \"saved_before\": true, \"remaining_open_documents\": 0, \"active_document\": null}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\close-target.docx"
+      }
+    },
+    {
+      "tool": "word_live_get_undo_history",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.778,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "payload success=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"undo_entries\": [\"MCP: Insert Text\", \"VBA-Range.Text\", \"VBA-Range.Text\", \"VBA-Range.Text\", \"VBA-Footnotes.Add\", \"VBA-Comments.Add\", \"VBA-Range.Text\", \"VBA-Range.Text\", \"VBA-Range.Text\", \"VBA-Range.Text\", \"VBA-Tables.Add\", \"VBA-Paragraph.Style\", \"VBA-Range.Text\"], \"count\": 13}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_get_undo_history\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_list_open",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.025,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "reported open documents=1",
+      "response_excerpt": "{\"success\": true, \"count\": 1, \"documents\": [{\"index\": 1, \"name\": \"case.docx\", \"full_path\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\word_live_list_open\\\\case.docx\", \"saved\": true, \"track_revisions\": false, \"pages\": 1, \"active\": true}]}",
+      "arguments": {}
+    },
+    {
+      "tool": "word_live_open",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport)",
+      "elapsed_seconds": 0.526,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word opened exact path=True",
+      "response_excerpt": "{\"success\": true, \"already_open\": false, \"document\": \"open-target.docx\", \"path\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\open-target.docx\"}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\open-target.docx"
+      }
+    },
+    {
+      "tool": "word_live_rename",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.134,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "active path=C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\rename-destination.docx; destination exists=True; source removed=True; content preserved=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"rename-destination.docx\", \"original_path\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\rename-source.docx\", \"new_path\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\rename-destination.docx\", \"original_removed\": true, \"saved\": true}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\rename-source.docx",
+        "new_path": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\rename-destination.docx"
+      }
+    },
+    {
+      "tool": "word_live_save",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.787,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word Saved=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"path\": \"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\word_live_save\\\\case.docx\"}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_save\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_set_core_properties",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.69,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word title='Verified title'",
+      "response_excerpt": "{\"ok\": true, \"document\": \"case.docx\", \"changed\": {\"title\": {\"old\": \"Seed title\", \"new\": \"Verified title\"}, \"author\": {\"old\": \"Chibuzor Ejimofor (Cicahuntek)\", \"new\": \"Capability Verifier\"}}, \"errors\": null}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_set_core_properties\\case.docx",
+        "title": "Verified title",
+        "author": "Capability Verifier"
+      }
+    },
+    {
+      "tool": "word_live_undo",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.842,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "document excludes 'Undo target marker'=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"times_requested\": 1, \"undo_result\": true, \"mcp_only\": true, \"undo_entries\": [\"MCP: Insert Text\"]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_undo\\case.docx",
+        "times": 1,
+        "mcp_only": true
+      }
+    },
+    {
+      "tool": "word_live_insert_file",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 6.233,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "preserved={'sections': True, 'styles': True, 'fields': True, 'comments': True, 'footnotes': True, 'endnotes': True, 'revisions': True}; inserted_range={'start': 73, 'end': 194}",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"source_path\":\"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\word_live_insert_file\\\\merge-source.docx\",\"source_bookmark\":null,\"target\":{\"kind\":\"position\",\"position\":\"end\",\"start\":73,\"end\":73},\"inserted_range\":{\"start\":73,\"end\":194},\"before\":{\"characters\":73,\"paragraphs\":10,\"sections\":1,\"tables\":1,\"fields\":0,\"comments\":1,\"footnotes\":1,\"endnotes\":0,\"revisions\":0,\"styles\":373},\"after\":{\"characters\":194,\"paragraphs\":15,\"sections\":2,\"tables\":1,\"fields\":1,\"comments\":2,\"footnotes\":2,\"endnotes\":1,\"revisions\":1,\"styles\":374},\"deltas\":{\"characters\":121,\"paragraphs\":5,\"sections\":1,\"tables\":0,\"fields\":1,\"comments\":1,\"footnotes\":1,\"endnotes\":1,\"revisions\":1,\"styles\":1},\"introduced_styles\":[\"CapabilityMergedStyle\"],\"introduced_list_templates\":[],\"native_operation\":\"Range.InsertFile\",\"undo_limitation\":\"Word Undo removes inserted content but may leave imported style and list-template definitions; list templates cannot be deleted through",
+      "arguments": {
+        "source_path": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_insert_file\\merge-source.docx",
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_insert_file\\case.docx",
+        "position": "end"
+      }
+    },
+    {
+      "tool": "word_live_navigate",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.158,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "selection={'char_start': 28, 'char_end': 28, 'collapsed': True, 'start_page': 2, 'end_page': 2, 'active_end_page': 2}; Word Saved=True; visible=True",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"requested\":{\"kind\":\"page\",\"page\":2},\"selection\":{\"char_start\":28,\"char_end\":28,\"collapsed\":true,\"start_page\":2,\"end_page\":2,\"active_end_page\":2},\"total_pages\":2,\"main_story_end\":76,\"saved_before\":true,\"saved_after\":true,\"saved_state_unchanged\":true,\"application_visible\":true,\"ui_effect\":\"The target document was activated, selected, and scrolled into view.\",\"limitations\":[\"Character offsets are Word UTF-16 positions in the main document story only.\",\"Page numbers are Word's current rendered pagination and can change after layout edits.\"]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_navigate\\case.docx",
+        "page": 2
+      }
+    },
+    {
+      "tool": "word_live_edit_footnotes_endnotes",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.735,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word footnote count=2",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"operation\": \"add\", \"note_type\": \"footnote\", \"before\": {\"footnotes\": 1, \"endnotes\": 0}, \"after\": {\"footnotes\": 2, \"endnotes\": 0}, \"note_index\": 2, \"reference_start\": 38, \"text\": \"Added footnote\"}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_edit_footnotes_endnotes\\case.docx",
+        "operation": "add",
+        "note_type": "footnote",
+        "paragraph_index": 3,
+        "text": "Added footnote"
+      }
+    },
+    {
+      "tool": "word_live_get_note_configuration",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.118,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "configured footnotes=1; Word footnotes=1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"footnotes\":{\"type\":\"footnote\",\"count\":1,\"starting_number\":1,\"numbering_rule\":\"continuous\",\"numbering_rule_id\":0,\"number_style\":\"arabic\",\"number_style_id\":0,\"location\":\"bottom_of_page\",\"location_id\":0,\"separator_text\":\"\\u0003\",\"continuation_separator_text\":\"\\u0004\"},\"endnotes\":{\"type\":\"endnote\",\"count\":0,\"starting_number\":1,\"numbering_rule\":\"continuous\",\"numbering_rule_id\":0,\"number_style\":\"lowercase_roman\",\"number_style_id\":2,\"location\":\"end_of_document\",\"location_id\":1,\"separator_text\":\"\\u0003\",\"continuation_separator_text\":\"\\u0004\"}}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_get_note_configuration\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_list_footnotes_endnotes",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.944,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "payload footnotes=1; Word footnotes=1",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"footnote_count\": 1, \"endnote_count\": 0, \"notes\": [{\"index\": 1, \"type\": \"footnote\", \"text\": \"Seed footnote\", \"reference_start\": 24, \"page\": 1}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_list_footnotes_endnotes\\case.docx",
+        "note_type": "all"
+      }
+    },
+    {
+      "tool": "word_live_set_note_configuration",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.236,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word footnote starting=1; rule=1; style=2; location=1; separator='Capability separator\\r\\r'",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"note_type\":\"footnote\",\"changed\":[\"starting_number\",\"numbering_rule\",\"number_style\",\"location\",\"separator_text\"],\"before\":{\"type\":\"footnote\",\"count\":1,\"starting_number\":1,\"numbering_rule\":\"continuous\",\"numbering_rule_id\":0,\"number_style\":\"arabic\",\"number_style_id\":0,\"location\":\"bottom_of_page\",\"location_id\":0,\"separator_text\":\"\\u0003\",\"continuation_separator_text\":\"\\u0004\"},\"after\":{\"type\":\"footnote\",\"count\":1,\"starting_number\":1,\"numbering_rule\":\"restart_each_section\",\"numbering_rule_id\":1,\"number_style\":\"lowercase_roman\",\"number_style_id\":2,\"location\":\"beneath_text\",\"location_id\":1,\"separator_text\":\"Capability separator\",\"continuation_separator_text\":\"\\u0004\"}}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_set_note_configuration\\case.docx",
+        "note_type": "footnote",
+        "starting_number": 1,
+        "numbering_rule": "restart_each_section",
+        "number_style": "lowercase_roman",
+        "location": "beneath_text",
+        "separator_text": "Capability separator"
+      }
+    },
+    {
+      "tool": "word_live_apply_list",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.043,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word list type=2",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"action\": \"applied bullet\", \"paragraphs\": \"2-3\", \"count\": 2, \"level\": 0, \"tracked\": false}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_apply_list\\case.docx",
+        "start_paragraph": 2,
+        "end_paragraph": 3,
+        "list_type": "bullet"
+      }
+    },
+    {
+      "tool": "word_live_inspect_heading_numbering",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.511,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "headings=1; heading styles=9",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"heading_styles\":[{\"heading_level\":1,\"style_name\":\"Heading 1\",\"linked\":false},{\"heading_level\":2,\"style_name\":\"Heading 2\",\"linked\":false},{\"heading_level\":3,\"style_name\":\"Heading 3\",\"linked\":false},{\"heading_level\":4,\"style_name\":\"Heading 4\",\"linked\":false},{\"heading_level\":5,\"style_name\":\"Heading 5\",\"linked\":false},{\"heading_level\":6,\"style_name\":\"Heading 6\",\"linked\":false},{\"heading_level\":7,\"style_name\":\"Heading 7\",\"linked\":false},{\"heading_level\":8,\"style_name\":\"Heading 8\",\"linked\":false},{\"heading_level\":9,\"style_name\":\"Heading 9\",\"linked\":false}],\"headings\":[{\"paragraph_index\":1,\"heading_level\":1,\"style_name\":\"Heading 1\",\"start_offset\":0,\"end_offset\":13,\"text\":\"Alpha marker\",\"numbered\":false,\"list_type\":\"none\",\"list_type_id\":0}],\"heading_count\":1,\"numbered_heading_count\":0}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_inspect_heading_numbering\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_setup_heading_numbering",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 5.833,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "numbered headings=1; Heading 1 format='Article %1'; Word list type=4",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"replaced_existing\":true,\"previous_native_numbering\":{\"linked_heading_levels\":[],\"numbered_heading_paragraphs\":[1]},\"heading_styles\":[{\"heading_level\":1,\"style_name\":\"Heading 1\",\"linked\":true,\"list_level\":1,\"template_name\":\"\",\"template_outline_numbered\":true,\"level_definition\":{\"level\":1,\"number_format\":\"Article %1\",\"number_style\":\"arabic\",\"number_style_id\":0,\"start_at\":1,\"reset_on_higher\":0,\"linked_style\":\"Heading 1\",\"number_position_points\":0.0,\"text_position_points\":18.0,\"tab_position_points\":18.0,\"trailing_character\":\"tab\",\"trailing_character_id\":0,\"alignment\":\"left\",\"alignment_id\":0}},{\"heading_level\":2,\"style_name\":\"Heading 2\",\"linked\":true,\"list_level\":2,\"template_name\":\"\",\"template_outline_numbered\":true,\"level_definition\":{\"level\":2,\"number_format\":\"%1.%2.\",\"number_style\":\"arabic\",\"number_style_id\":0,\"start_at\":1,\"reset_on_higher\":1,\"linked_style\":\"Heading 2\",\"number_position_points\":18.0,\"text_position_points\":36.0,\"tab_position_points\":",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_setup_heading_numbering\\case.docx",
+        "replace_existing": true,
+        "number_formats": {
+          "1": "Article %1"
+        }
+      }
+    },
+    {
+      "tool": "word_live_inspect_document_outline",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.48,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "outline entries=1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"maximum_level\":9,\"include_body_text\":false,\"outline_entry_count\":1,\"body_paragraph_count\":9,\"returned_count\":1,\"entries\":[{\"paragraph_index\":1,\"outline_level\":1,\"is_body_text\":false,\"style\":\"Heading 1\",\"start_offset\":0,\"end_offset\":13,\"page_number\":1,\"text\":\"Alpha marker\"}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_inspect_document_outline\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_accept_revisions",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.815,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word revision count=0",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"accepted\": 1, \"mode\": \"all\"}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_accept_revisions\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_list_revisions",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.244,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "payload revisions=1; Word revisions=1",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"revision_count\": 1, \"revisions\": [{\"index\": 1, \"type\": \"insert\", \"type_id\": 1, \"author\": \"Chibuzor Ejimofor (Cicahuntek)\", \"date\": \"2026-08-31 15:47:00+00:00\", \"text\": \"Revision marker\"}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_list_revisions\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_reject_revisions",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.831,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word revisions=0; marker present=False",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"rejected\": 1, \"mode\": \"all\"}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_reject_revisions\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_toggle_track_changes",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.638,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word TrackRevisions=True",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"previous_state\": false, \"track_changes\": true}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_toggle_track_changes\\case.docx",
+        "enable": true
+      }
+    },
+    {
+      "tool": "word_live_create_document_snapshot",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 3.367,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "snapshot exists=True; Word Saved=True; section headers=['Inherited capability header', 'Inherited capability header']",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"snapshot_path\":\"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\word_live_create_document_snapshot\\\\snapshot.json\",\"schema\":\"word-mcp-live.document-snapshot\",\"version\":1,\"content_sha256\":\"d1c878d7cfe382c627588184974b423a5baa0a18a5346d77ef00bd24e6f4a264\",\"envelope_sha256\":\"585a0a17cc4e8c6e9f22af4cf6f605c915f68301889d3c622d35acfd5c53b931\",\"integrity_scope\":\"complete_snapshot_envelope_checksum_not_authentication\",\"capture_warnings\":[],\"counts\":{\"paragraphs\":11,\"tables\":1,\"sections\":2,\"headers_footers\":12,\"notes\":1,\"fields\":0,\"bookmarks\":0,\"comments\":1,\"revisions\":0},\"visual_equivalence_captured\":false,\"saved_state_unchanged\":true,\"sensitivity_warning\":\"The snapshot contains document text, comments, notes, and metadata. Store and share it with the same care as the source document.\"}",
+      "arguments": {
+        "snapshot_path": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_create_document_snapshot\\snapshot.json",
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_create_document_snapshot\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_diff_document_snapshots",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 3.895,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "paragraph_change_groups=1; component_leaf_changes=0; paragraph_operations=1",
+      "response_excerpt": "{\"success\":true,\"before_snapshot_path\":\"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\word_live_diff_document_snapshots\\\\before.json\",\"after_snapshot_path\":\"C:\\\\Users\\\\user18\\\\AppData\\\\Local\\\\Temp\\\\word-mcp-capabilities-xm0h4uyr\\\\word_live_diff_document_snapshots\\\\after.json\",\"same_source_path\":true,\"source_identity_basis\":\"case-insensitive normalized Windows full path only\",\"identical_semantic_content\":false,\"paragraph_change_group_count\":1,\"component_leaf_change_count\":0,\"paragraph_operations\":[{\"operation\":\"replace\",\"before_start_index\":2,\"before_count\":1,\"after_start_index\":2,\"after_count\":1,\"before\":[{\"in_table\":false,\"list\":{\"label\":null,\"level\":null,\"type_id\":0},\"outline_level\":10,\"style\":\"Normal\",\"text\":\"Beta marker\\u0002\"}],\"after\":[{\"in_table\":false,\"list\":{\"label\":null,\"level\":null,\"type_id\":0},\"outline_level\":10,\"style\":\"Normal\",\"text\":\"Snapshot changed marker\\u0002\"}]}],\"component_changes\":{},\"comparison_scope\":\"semantic_content_and_structure\",\"v",
+      "arguments": {
+        "before_snapshot_path": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_diff_document_snapshots\\before.json",
+        "after_snapshot_path": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_diff_document_snapshots\\after.json"
+      }
+    },
+    {
+      "tool": "word_live_create_custom_style",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.942,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word custom character style was created with bold formatting",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"style\":{\"name\":\"CreatedCapabilityCharacterStyle\",\"built_in\":false,\"type\":\"character\",\"type_id\":2,\"base_style\":\"Default Paragraph Font\",\"automatically_update\":null,\"font\":{\"name\":\"Aptos\",\"size_pt\":13.0,\"bold\":true,\"italic\":false,\"underline\":0,\"color_bgr\":-16777216}}}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_create_custom_style\\case.docx",
+        "style_name": "CreatedCapabilityCharacterStyle",
+        "style_type": "character",
+        "font_size": 13,
+        "bold": true
+      }
+    },
+    {
+      "tool": "word_live_delete_custom_style",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 3.134,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word style still exists=False",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"deleted_style\":{\"name\":\"CapabilityCharacterStyle\",\"built_in\":false,\"type\":\"character\",\"type_id\":2,\"base_style\":\"Default Paragraph Font\",\"automatically_update\":null,\"font\":{\"name\":\"Aptos\",\"size_pt\":12.0,\"bold\":false,\"italic\":false,\"underline\":0,\"color_bgr\":-16777216}}}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_delete_custom_style\\case.docx",
+        "style_name": "CapabilityCharacterStyle"
+      }
+    },
+    {
+      "tool": "word_live_list_custom_styles",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.9,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "custom styles=1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"custom_style_count\":1,\"styles\":[{\"name\":\"CapabilityStyle\",\"built_in\":false,\"type\":\"paragraph\",\"type_id\":1,\"base_style\":\"Heading 1\",\"automatically_update\":false,\"font\":{\"name\":\"Aptos Display\",\"size_pt\":20.0,\"bold\":false,\"italic\":false,\"underline\":0,\"color_bgr\":-738148353},\"index\":1,\"paragraph\":{\"alignment\":\"left\",\"space_before_pt\":18.0,\"space_after_pt\":4.0,\"left_indent_pt\":0.0,\"right_indent_pt\":0.0,\"first_line_indent_pt\":0.0,\"keep_with_next\":true,\"keep_together\":true,\"page_break_before\":false,\"outline_level\":1},\"collection_index\":16}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_list_custom_styles\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_update_custom_style",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.787,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word style size=14.0; italic=-1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"style\":{\"name\":\"CapabilityCharacterStyle\",\"built_in\":false,\"type\":\"character\",\"type_id\":2,\"base_style\":\"Default Paragraph Font\",\"automatically_update\":null,\"font\":{\"name\":\"Aptos\",\"size_pt\":14.0,\"bold\":false,\"italic\":true,\"underline\":0,\"color_bgr\":-16777216}}}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_update_custom_style\\case.docx",
+        "style_name": "CapabilityCharacterStyle",
+        "font_size": 14,
+        "italic": true
+      }
+    },
+    {
+      "tool": "word_live_add_table",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.867,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word table count=2",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"rows\": 2, \"cols\": 2, \"position\": \"end\", \"style\": \"Table Grid\", \"autofit\": \"window\", \"tracked\": false}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_add_table\\case.docx",
+        "rows": 2,
+        "cols": 2,
+        "data": [
+          [
+            "New A1",
+            "New A2"
+          ],
+          [
+            "New B1",
+            "New B2"
+          ]
+        ],
+        "position": "end"
+      }
+    },
+    {
+      "tool": "word_live_format_table",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.807,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word table alignment=1; font_size=10.0",
+      "response_excerpt": "{\"success\": true, \"document\": \"case.docx\", \"table_index\": 1, \"rows\": 2, \"cols\": 2, \"actions\": [\"table_alignment=center\", \"font_size=10.0\", \"cell_shading=1 entries\"]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_format_table\\case.docx",
+        "table_index": 1,
+        "table_alignment": "center",
+        "font_size": 10,
+        "cell_shading": [
+          [
+            1,
+            1,
+            "D9EAF7"
+          ]
+        ]
+      }
+    },
+    {
+      "tool": "word_live_modify_table",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.672,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word cell text='Changed cell\\r\\x07'",
+      "response_excerpt": "{\"row\": 1, \"col\": 1, \"text\": \"Changed cell\", \"success\": true, \"document\": \"case.docx\", \"table_index\": 1, \"operation\": \"set_cell\", \"tracked\": false}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_modify_table\\case.docx",
+        "table_index": 1,
+        "operation": "set_cell",
+        "row": 1,
+        "col": 1,
+        "text": "Changed cell"
+      }
+    },
+    {
+      "tool": "word_live_create_table_of_contents",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.944,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word TOCs=1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"created_at_offset\":0,\"table_of_contents\":{\"index\":1,\"start_offset\":0,\"end_offset\":105,\"text\":\"Alpha marker\\t1\\r\",\"use_heading_styles\":true,\"upper_heading_level\":1,\"lower_heading_level\":3,\"include_page_numbers\":true,\"right_align_page_numbers\":true,\"use_hyperlinks\":true,\"hide_page_numbers_in_web\":true,\"field_code\":\" TOC \\\\o \\\"1-3\\\" \\\\h \\\\z \\\\u \"}}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_create_table_of_contents\\case.docx",
+        "target": "document_start",
+        "upper_heading_level": 1,
+        "lower_heading_level": 3
+      }
+    },
+    {
+      "tool": "word_live_delete_table_of_contents",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.015,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word TOCs after delete=0",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"deleted_table_of_contents\":{\"index\":1,\"start_offset\":0,\"end_offset\":105,\"text\":\"Alpha marker\\t1\\r\",\"use_heading_styles\":true,\"upper_heading_level\":1,\"lower_heading_level\":3,\"include_page_numbers\":true,\"right_align_page_numbers\":true,\"use_hyperlinks\":true,\"hide_page_numbers_in_web\":true,\"field_code\":\" TOC \\\\o \\\"1-3\\\" \\\\h \\\\z \\\\u \"},\"remaining_toc_count\":0}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_delete_table_of_contents\\case.docx",
+        "toc_index": 1
+      }
+    },
+    {
+      "tool": "word_live_list_tables_of_contents",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 0.903,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "payload TOCs=1; Word TOCs=1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"toc_count\":1,\"tables_of_contents\":[{\"index\":1,\"start_offset\":0,\"end_offset\":105,\"text\":\"Alpha marker\\t1\\r\",\"use_heading_styles\":true,\"upper_heading_level\":1,\"lower_heading_level\":3,\"include_page_numbers\":true,\"right_align_page_numbers\":true,\"use_hyperlinks\":true,\"hide_page_numbers_in_web\":true,\"field_code\":\" TOC \\\\o \\\"1-3\\\" \\\\h \\\\z \\\\u \"}]}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_list_tables_of_contents\\case.docx"
+      }
+    },
+    {
+      "tool": "word_live_update_table_of_contents",
+      "status": "PASS",
+      "invocation": "FastMCP Client (in-memory transport) + isolated Word COM",
+      "elapsed_seconds": 1.01,
+      "mcp_is_error": false,
+      "nested_error": null,
+      "postcondition": "Word TOCs after update=1",
+      "response_excerpt": "{\"success\":true,\"document\":\"case.docx\",\"mode\":\"all\",\"table_of_contents\":{\"index\":1,\"start_offset\":0,\"end_offset\":105,\"text\":\"Alpha marker\\t1\\r\",\"use_heading_styles\":true,\"upper_heading_level\":1,\"lower_heading_level\":3,\"include_page_numbers\":true,\"right_align_page_numbers\":true,\"use_hyperlinks\":true,\"hide_page_numbers_in_web\":true,\"field_code\":\" TOC \\\\o \\\"1-3\\\" \\\\h \\\\z \\\\u \"}}",
+      "arguments": {
+        "filename": "C:\\Users\\user18\\AppData\\Local\\Temp\\word-mcp-capabilities-xm0h4uyr\\word_live_update_table_of_contents\\case.docx",
+        "toc_index": 1,
+        "mode": "all"
+      }
+    }
+  ],
+  "workflows": [
+    {
+      "workflow": "stateful single-document edit, save, and reopen",
+      "status": "PASS",
+      "elapsed_seconds": 3.039,
+      "steps_completed": 14,
+      "expected_steps": 14,
+      "evidence": "All cumulative text, formatting, comment, endnote, footer field, bookmark, property, table, save, public close-with-save, reopen, and implicit active-document checks passed; immediate Word Saved flag=True",
+      "error": null
+    },
+    {
+      "workflow": "multiple open documents and target selection",
+      "status": "PASS",
+      "elapsed_seconds": 1.321,
+      "steps_completed": 6,
+      "expected_steps": 6,
+      "evidence": "Active-document, unique-basename, full-path, isolated mutation, listing, and activation-switch checks passed across three simultaneously open documents",
+      "error": null
+    }
+  ]
+}

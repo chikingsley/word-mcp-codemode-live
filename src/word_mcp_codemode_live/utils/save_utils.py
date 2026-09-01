@@ -7,11 +7,14 @@ Solution: Before save, extract custom parts from the original file. After save,
 re-inject them into the new file.
 """
 
+import logging
 import zipfile
 from io import BytesIO
 from pathlib import Path
 
 from lxml import etree
+
+logger = logging.getLogger(__name__)
 
 # Parts that python-docx strips on save
 CUSTOM_PARTS_TO_PRESERVE = [
@@ -31,6 +34,70 @@ COMMENT_REL_TYPES = {
 
 REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 CT_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
+
+
+def _next_relationship_id(existing_ids: set[str]) -> str:
+    numbers = []
+    for relationship_id in existing_ids:
+        if relationship_id.startswith("rId"):
+            try:
+                numbers.append(int(relationship_id[3:]))
+            except ValueError:
+                continue
+    return f"rId{max(numbers, default=0) + 1}"
+
+
+def _patch_relationships(zf_in, preserved: dict, existing_names: set[str]) -> bytes | None:
+    rels_path = "word/_rels/document.xml.rels"
+    if not preserved["rels"] or rels_path not in existing_names:
+        return None
+    root = etree.fromstring(zf_in.read(rels_path))
+    relationships = list(root.iter(f"{{{REL_NS}}}Relationship"))
+    existing_ids = {rel.get("Id", "") for rel in relationships}
+    existing_types = {rel.get("Type", "") for rel in relationships}
+    for info in preserved["rels"]:
+        if info["Type"] in existing_types:
+            continue
+        relationship_id = info["Id"]
+        if relationship_id in existing_ids:
+            relationship_id = _next_relationship_id(existing_ids)
+        new_relationship = etree.SubElement(root, f"{{{REL_NS}}}Relationship")
+        new_relationship.set("Id", relationship_id)
+        new_relationship.set("Type", info["Type"])
+        new_relationship.set("Target", info["Target"])
+        existing_ids.add(relationship_id)
+        existing_types.add(info["Type"])
+    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+
+
+def _patch_content_types(zf_in, preserved: dict, existing_names: set[str]) -> bytes | None:
+    content_types_path = "[Content_Types].xml"
+    if not preserved["overrides"] or content_types_path not in existing_names:
+        return None
+    root = etree.fromstring(zf_in.read(content_types_path))
+    existing_parts = {
+        override.get("PartName", "") for override in root.iter(f"{{{CT_NS}}}Override")
+    }
+    for info in preserved["overrides"]:
+        if info["PartName"] in existing_parts:
+            continue
+        override = etree.SubElement(root, f"{{{CT_NS}}}Override")
+        override.set("PartName", info["PartName"])
+        override.set("ContentType", info["ContentType"])
+        existing_parts.add(info["PartName"])
+    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+
+
+def _rebuilt_archive(zf_in, preserved: dict, replacements: dict[str, bytes]) -> bytes:
+    existing_names = set(zf_in.namelist())
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf_out:
+        for item in zf_in.infolist():
+            zf_out.writestr(item, replacements.get(item.filename, zf_in.read(item.filename)))
+        for part_name, part_bytes in preserved["parts"].items():
+            if part_name not in existing_names:
+                zf_out.writestr(part_name, part_bytes)
+    return buffer.getvalue()
 
 
 def _extract_custom_parts(zip_bytes: bytes) -> dict | None:
@@ -89,86 +156,21 @@ def _reinject_custom_parts(filepath: Path, preserved: dict) -> None:
 
     with zipfile.ZipFile(BytesIO(zip_bytes), "r") as zf_in:
         existing_names = set(zf_in.namelist())
-
-        # --- Patch document.xml.rels ---
         rels_path = "word/_rels/document.xml.rels"
-        patched_rels_xml = None
-        if preserved["rels"] and rels_path in existing_names:
-            rels_root = etree.fromstring(zf_in.read(rels_path))
-
-            # Collect existing rIds and rel types
-            existing_rids = set()
-            existing_types = set()
-            for rel in rels_root.iter(f"{{{REL_NS}}}Relationship"):
-                existing_rids.add(rel.get("Id", ""))
-                existing_types.add(rel.get("Type", ""))
-
-            for rel_info in preserved["rels"]:
-                # Skip if this relationship type already exists (don't duplicate)
-                if rel_info["Type"] in existing_types:
-                    continue
-
-                # Find a non-conflicting rId
-                rid = rel_info["Id"]
-                if rid in existing_rids:
-                    # Generate a new rId
-                    max_num = 0
-                    for existing_rid in existing_rids:
-                        if existing_rid.startswith("rId"):
-                            try:
-                                max_num = max(max_num, int(existing_rid[3:]))
-                            except ValueError:
-                                pass
-                    rid = f"rId{max_num + 1}"
-
-                new_rel = etree.SubElement(rels_root, f"{{{REL_NS}}}Relationship")
-                new_rel.set("Id", rid)
-                new_rel.set("Type", rel_info["Type"])
-                new_rel.set("Target", rel_info["Target"])
-                existing_rids.add(rid)
-                existing_types.add(rel_info["Type"])
-
-            patched_rels_xml = etree.tostring(
-                rels_root, xml_declaration=True, encoding="UTF-8", standalone=True
+        replacements = {
+            name: content
+            for name, content in (
+                (rels_path, _patch_relationships(zf_in, preserved, existing_names)),
+                (
+                    "[Content_Types].xml",
+                    _patch_content_types(zf_in, preserved, existing_names),
+                ),
             )
+            if content is not None
+        }
+        rebuilt = _rebuilt_archive(zf_in, preserved, replacements)
 
-        # --- Patch [Content_Types].xml ---
-        patched_ct_xml = None
-        if preserved["overrides"] and "[Content_Types].xml" in existing_names:
-            ct_root = etree.fromstring(zf_in.read("[Content_Types].xml"))
-
-            existing_part_names = set()
-            for override in ct_root.iter(f"{{{CT_NS}}}Override"):
-                existing_part_names.add(override.get("PartName", ""))
-
-            for ov_info in preserved["overrides"]:
-                if ov_info["PartName"] not in existing_part_names:
-                    new_ov = etree.SubElement(ct_root, f"{{{CT_NS}}}Override")
-                    new_ov.set("PartName", ov_info["PartName"])
-                    new_ov.set("ContentType", ov_info["ContentType"])
-                    existing_part_names.add(ov_info["PartName"])
-
-            patched_ct_xml = etree.tostring(
-                ct_root, xml_declaration=True, encoding="UTF-8", standalone=True
-            )
-
-        # --- Rebuild the zip ---
-        buffer = BytesIO()
-        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf_out:
-            for item in zf_in.infolist():
-                if item.filename == rels_path and patched_rels_xml is not None:
-                    zf_out.writestr(item, patched_rels_xml)
-                elif item.filename == "[Content_Types].xml" and patched_ct_xml is not None:
-                    zf_out.writestr(item, patched_ct_xml)
-                else:
-                    zf_out.writestr(item, zf_in.read(item.filename))
-
-            # Re-add custom part files that python-docx stripped
-            for part_name, part_bytes in preserved["parts"].items():
-                if part_name not in existing_names:
-                    zf_out.writestr(part_name, part_bytes)
-
-    filepath.write_bytes(buffer.getvalue())
+    filepath.write_bytes(rebuilt)
 
 
 def install_save_hook() -> None:
@@ -205,8 +207,10 @@ def install_save_hook() -> None:
             if preserved is not None:
                 try:
                     _reinject_custom_parts(filepath, preserved)
-                except Exception:
-                    pass  # Fail silently — better to have a saved doc without comments than crash
+                except Exception as exc:
+                    logger.error(
+                        "Saved %s but failed to restore preserved comment XML: %s", filepath, exc
+                    )
         else:
             # Stream-based save — don't interfere
             _original_save(self, path_or_stream)

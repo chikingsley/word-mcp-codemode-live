@@ -4,12 +4,17 @@ Provides functions to connect to a running Word instance and find open documents
 Only works on Windows with pywin32 installed.
 """
 
+import logging
 import os
+import secrets
 import sys
 import unicodedata
+from collections.abc import Callable
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 _WORD_APP: Any | None = None
 _UNDO_DEPTH: ContextVar[int] = ContextVar("word_mcp_undo_depth", default=0)
@@ -107,8 +112,8 @@ def _find_word_with_docs():
                     name = moniker.GetDisplayName(ctx, None)
                     if name and (name.lower().endswith(".docx") or name.lower().endswith(".doc")):
                         monikers_to_retry.append((name, moniker))
-                except Exception:
-                    pass
+                except Exception as display_exc:
+                    logger.debug("Could not inspect fallback ROT moniker: %s", display_exc)
                 continue
 
         # Pass 2: try file monikers → Document → Application
@@ -120,10 +125,11 @@ def _find_word_with_docs():
                 app = doc.Application
                 if app.Documents.Count > 0:
                     return app
-            except Exception:
+            except Exception as exc:
+                logger.debug("Could not bind Word document ROT moniker: %s", exc)
                 continue
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Word Running Object Table scan failed: %s", exc)
     return None
 
 
@@ -147,23 +153,30 @@ def find_document(app, filename: str | None = None):
     if not filename:
         return app.ActiveDocument
 
-    target_basename = unicodedata.normalize("NFC", os.path.basename(filename)).lower()
-    target_fullpath = (
-        unicodedata.normalize("NFC", os.path.normpath(filename)).lower()
-        if os.path.isabs(filename)
-        else None
-    )
+    def normalized_path(value: str) -> str:
+        return unicodedata.normalize("NFC", os.path.normcase(os.path.normpath(value)))
 
-    for i in range(1, app.Documents.Count + 1):
-        doc = app.Documents(i)
-        if unicodedata.normalize("NFC", doc.Name).lower() == target_basename:
-            return doc
-        if (
-            target_fullpath
-            and unicodedata.normalize("NFC", os.path.normpath(doc.FullName)).lower()
-            == target_fullpath
-        ):
-            return doc
+    if os.path.isabs(filename):
+        target_fullpath = normalized_path(filename)
+        for i in range(1, app.Documents.Count + 1):
+            doc = app.Documents(i)
+            if normalized_path(str(doc.FullName)) == target_fullpath:
+                return doc
+    else:
+        target_basename = unicodedata.normalize("NFC", os.path.basename(filename)).casefold()
+        matches = [
+            app.Documents(i)
+            for i in range(1, app.Documents.Count + 1)
+            if unicodedata.normalize("NFC", str(app.Documents(i).Name)).casefold()
+            == target_basename
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            candidates = [str(document.FullName) for document in matches]
+            raise ValueError(
+                f"Document name '{filename}' is ambiguous. Use one of these full paths: {candidates}"
+            )
 
     open_docs = [app.Documents(i).Name for i in range(1, app.Documents.Count + 1)]
     raise ValueError(f"Document '{filename}' is not open in Word. Open documents: {open_docs}")
@@ -206,8 +219,8 @@ def undo_record(app, name: str):
         if rec.IsRecordingCustomRecord:
             try:
                 rec.EndCustomRecord()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Could not close stale Word undo record: %s", exc)
         rec.StartCustomRecord(name[:64])
     except Exception:
         rec = None  # Word 2007 or earlier — proceed without
@@ -217,6 +230,91 @@ def undo_record(app, name: str):
         if rec is not None:
             try:
                 rec.EndCustomRecord()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Could not close Word undo record %r: %s", name, exc)
         _UNDO_DEPTH.reset(token)
+
+
+def undo_named_record(document: Any, app: Any, name: str) -> bool:
+    """Undo only when Word confirms ``name`` is the latest Undo entry."""
+    previous_document = None
+    try:
+        previous_document = app.ActiveDocument
+        document.Activate()
+        control = app.CommandBars.FindControl(Type=6, Id=128)
+        if control is None or not control.ListCount:
+            return False
+        latest = str(control.List(1))
+        if name[:64].casefold() not in latest.casefold():
+            return False
+        return bool(document.Undo(1))
+    except Exception:
+        return False
+    finally:
+        if previous_document is not None:
+            try:
+                previous_document.Activate()
+            except Exception as exc:
+                logger.debug("Could not reactivate previous Word document: %s", exc)
+
+
+def unique_undo_name(name: str) -> str:
+    """Return a human-readable, per-invocation Word Undo label."""
+    suffix = f" [{secrets.token_hex(4)}]"
+    return f"{name[: 64 - len(suffix)]}{suffix}"
+
+
+@contextmanager
+def revision_tracking(app: Any, document: Any, enabled: bool, author: str):
+    """Temporarily enable tracked revisions and restore the user's Word state."""
+    previous_tracking = document.TrackRevisions
+    previous_author = app.UserName
+    if enabled:
+        document.TrackRevisions = True
+        app.UserName = author
+    try:
+        yield
+    finally:
+        if enabled:
+            document.TrackRevisions = previous_tracking
+            app.UserName = previous_author
+
+
+@contextmanager
+def undo_transaction(
+    app: Any,
+    document: Any,
+    name: str,
+    rollback_cleanup: Callable[[], None] | None = None,
+):
+    """Group edits and roll back a failed top-level custom Undo record.
+
+    Nested uses participate in the outer batch, whose caller owns rollback. For a
+    direct tool call, rollback occurs only when Word positively identifies this
+    transaction as the latest Undo entry; an unconfirmed rollback is included in
+    the raised error instead of risking an older user action. ``rollback_cleanup``
+    runs only after that positive Undo and is reserved for Word object definitions
+    that the native Undo stack does not restore.
+    """
+    nested = _UNDO_DEPTH.get() > 0
+    actual_name = unique_undo_name(name) if not nested else name
+    try:
+        with undo_record(app, actual_name):
+            yield
+    except Exception as exc:
+        if nested:
+            raise
+        if undo_named_record(document, app, actual_name):
+            if rollback_cleanup is not None:
+                try:
+                    rollback_cleanup()
+                except Exception as cleanup_exc:
+                    raise RuntimeError(
+                        f"{exc} (Word undid {name!r}, but rollback cleanup failed: "
+                        f"{cleanup_exc}; inspect the document before continuing)"
+                    ) from cleanup_exc
+            raise
+        raise RuntimeError(
+            f"{exc} (Word could not confirm automatic rollback of {name!r}; "
+            "inspect the document before continuing)"
+        ) from exc

@@ -37,7 +37,7 @@ def reject_control_chars(label: str, text: str) -> None:
             "If you are trying to remove orphan cell separators left by a "
             "prior delete_table, call word_live_modify_table with "
             "operation='delete_table' and scrub_orphans=True (default), "
-            "or use word_live_diagnose_layout to locate them. "
+            "then inspect the affected range with word_live_get_text. "
             "For paragraph marks / page breaks, use use_wildcards=True with "
             "^p / ^m."
         )
