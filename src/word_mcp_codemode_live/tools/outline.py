@@ -1,17 +1,12 @@
 """Inspect the native outline structure of an open Word document."""
 
-import sys
 from typing import Any
 
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
 
 _WD_ACTIVE_END_PAGE_NUMBER = 3
 _BODY_TEXT_LEVEL = 10
-
-
-def _require_windows() -> None:
-    if sys.platform != "win32":
-        raise RuntimeError("Live outline tools are only available on Windows")
 
 
 @word_tool(title="Word Live Inspect Document Outline", domain="inspection", change="read")
@@ -25,12 +20,11 @@ async def word_live_inspect_document_outline(
     Paragraph indexes are one-based. Character positions are zero-based offsets.
     ``page_number`` is Word's active-end page number and may trigger repagination.
     """
-    _require_windows()
+    word_session.require_windows("Live outline tools")
     if not 1 <= maximum_level <= 9:
         raise ValueError("maximum_level must be between 1 and 9")
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app
 
-    document = find_document(get_word_app(), filename)
+    document = word_session.find_document(word_session.get_word_app(), filename)
     entries: list[dict[str, Any]] = []
     outlined_count = 0
     body_count = 0

@@ -6,8 +6,8 @@ from typing import Any
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools import navigation
+from word_mcp_codemode_live.word import session as word_com
 
 
 class FakeRange:
@@ -81,7 +81,7 @@ def fake_word(monkeypatch: pytest.MonkeyPatch) -> tuple[Any, FakeDocument]:
     document = FakeDocument()
     application = SimpleNamespace(Visible=True, Selection=FakeSelection())
     document.application = application
-    monkeypatch.setattr(navigation.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: application)
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
     return application, document

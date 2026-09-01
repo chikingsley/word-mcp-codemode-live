@@ -2,8 +2,8 @@ from typing import Any
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools import layout_diagnostics
+from word_mcp_codemode_live.word import session as word_com
 
 
 class FakeFind:
@@ -130,7 +130,7 @@ async def test_inspect_layout_reports_objective_pagination_state(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     document = FakeDocument()
-    monkeypatch.setattr(layout_diagnostics.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
 
@@ -147,7 +147,7 @@ async def test_inspect_layout_reports_objective_pagination_state(
 
 @pytest.mark.asyncio
 async def test_inspect_layout_enforces_bounded_detail(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(layout_diagnostics.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     with pytest.raises(ValueError, match="between 1 and 2000"):
         await layout_diagnostics.word_live_inspect_layout(max_controlled_paragraphs=0)
 
@@ -160,7 +160,7 @@ async def test_inspect_layout_subtracts_top_gutter_from_height(
     setup = document.Sections(1).PageSetup
     setup.Gutter = 36.0
     setup.GutterPos = 1
-    monkeypatch.setattr(layout_diagnostics.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
 

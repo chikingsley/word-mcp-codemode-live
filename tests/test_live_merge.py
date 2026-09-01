@@ -7,8 +7,8 @@ from typing import Any
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools import merge
+from word_mcp_codemode_live.word import session as word_com
 
 
 class _Range:
@@ -114,7 +114,7 @@ def live_document(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     source = tmp_path / "source.docx"
     source.touch()
     document = _Document(destination)
-    monkeypatch.setattr(merge.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
     monkeypatch.setattr(word_com, "undo_transaction", _transaction)

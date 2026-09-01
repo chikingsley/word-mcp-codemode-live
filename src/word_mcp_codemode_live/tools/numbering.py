@@ -1,12 +1,14 @@
 """Apply list and numbering formats in live Word documents."""
 
-import json
 import re
-import sys
-from typing import Any
+from typing import Annotated, Any, Literal
+
+from pydantic import Field
 
 from word_mcp_codemode_live.defaults import DEFAULT_AUTHOR
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
+from word_mcp_codemode_live.word.values import rgb_hex_to_word
 
 _LIST_TYPE_NAMES = {
     0: "none",
@@ -270,8 +272,6 @@ def _parse_list_options(
     if any(not 1 <= value <= 9 for value in levels.values()):
         raise ValueError("level_map values must be between 1 and 9")
     styles = _parse_list_styles(number_style, formats)
-    from word_mcp_codemode_live.core.word_values import rgb_hex_to_word
-
     color = rgb_hex_to_word(font_color, field_name="font_color") if font_color else None
     return {
         "formats": formats,
@@ -382,12 +382,9 @@ async def word_live_inspect_heading_numbering(
     Args:
         filename: Open document name or full path (None = active document).
     """
-    if sys.platform != "win32":
-        raise RuntimeError("Live numbering tools are only available on Windows")
+    word_session.require_windows("Live numbering tools")
 
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app
-
-    document = find_document(get_word_app(), filename)
+    document = word_session.find_document(word_session.get_word_app(), filename)
     return {
         "success": True,
         "document": str(document.Name),
@@ -433,8 +430,7 @@ async def word_live_setup_heading_numbering(
     Returns:
         The post-edit native style definitions and numbered heading state.
     """
-    if sys.platform != "win32":
-        raise RuntimeError("Live numbering tools are only available on Windows")
+    word_session.require_windows("Live numbering tools")
 
     mappings: list[tuple[str, dict[int, Any]]] = [
         ("number_formats", number_formats or {}),
@@ -445,14 +441,8 @@ async def word_live_setup_heading_numbering(
     ]
     normalized = _normalize_level_mappings(mappings)
 
-    from word_mcp_codemode_live.core.word_com import (
-        find_document,
-        get_word_app,
-        undo_transaction,
-    )
-
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     before = _heading_numbering_snapshot(document)
     built_in_style_names, linked_styles, numbered_paragraphs = _existing_heading_numbering(before)
     if not replace_existing and (linked_styles or numbered_paragraphs):
@@ -463,7 +453,7 @@ async def word_live_setup_heading_numbering(
             "only to replace it."
         )
 
-    with undo_transaction(app, document, "MCP: Setup Heading Numbering"):
+    with word_session.undo_transaction(app, document, "MCP: Setup Heading Numbering"):
         try:
             if replace_existing:
                 for paragraph_index in numbered_paragraphs:
@@ -494,10 +484,10 @@ async def word_live_setup_heading_numbering(
 @word_tool(title="Word Live Apply List", domain="numbering", change="edit", batchable=True)
 async def word_live_apply_list(
     filename: str | None = None,
-    start_paragraph: int | None = None,
-    end_paragraph: int | None = None,
-    list_type: str = "bullet",
-    level: int = 0,
+    start_paragraph: Annotated[int, Field(ge=1)] | None = None,
+    end_paragraph: Annotated[int, Field(ge=1)] | None = None,
+    list_type: Literal["bullet", "number", "multilevel"] = "bullet",
+    level: Annotated[int, Field(ge=0, le=8)] = 0,
     remove: bool = False,
     continue_previous: bool = False,
     number_format: dict | None = None,
@@ -506,7 +496,7 @@ async def word_live_apply_list(
     level_map: dict | None = None,
     track_changes: bool = False,
     font_color: str | None = None,
-) -> str:
+) -> dict[str, Any]:
     """[Windows only] Apply or remove bullet/numbered/multilevel list formatting on paragraphs.
 
     Args:
@@ -541,72 +531,53 @@ async def word_live_apply_list(
         JSON with result info.
     """
 
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live editing is only available on Windows"})
+    word_session.require_windows("Live Word editing")
 
     if start_paragraph is None:
-        return json.dumps({"error": "start_paragraph is required (1-indexed)"})
+        raise ValueError("start_paragraph is required (1-indexed)")
 
     if end_paragraph is None:
         end_paragraph = start_paragraph
 
     if list_type not in {"bullet", "number", "multilevel"}:
-        return json.dumps({"error": "list_type must be bullet, number, or multilevel"})
+        raise ValueError("list_type must be bullet, number, or multilevel")
     if level < 0 or level > 8:
-        return json.dumps({"error": "level must be between 0 and 8"})
+        raise ValueError("level must be between 0 and 8")
 
-    try:
-        options = _parse_list_options(number_format, number_style, start_at, level_map, font_color)
-    except (TypeError, ValueError) as exc:
-        return json.dumps({"error": str(exc)})
+    options = _parse_list_options(number_format, number_style, start_at, level_map, font_color)
+    app = word_session.get_word_app()
+    doc = word_session.find_document(app, filename)
 
-    try:
-        from word_mcp_codemode_live.core.word_com import (
-            find_document,
-            get_word_app,
-            revision_tracking,
-            undo_record,
+    total_paras = int(doc.Paragraphs.Count)
+    if start_paragraph < 1 or end_paragraph > total_paras:
+        raise ValueError(
+            f"Paragraph range {start_paragraph}-{end_paragraph} out of bounds "
+            f"(doc has {total_paras} paragraphs)"
         )
 
-        app = get_word_app()
-        doc = find_document(app, filename)
-
-        total_paras = doc.Paragraphs.Count
-        if start_paragraph < 1 or end_paragraph > total_paras:
-            return json.dumps(
-                {
-                    "error": f"Paragraph range {start_paragraph}-{end_paragraph} out of bounds (doc has {total_paras} paragraphs)"
-                }
+    with word_session.undo_record(app, "MCP: Apply List"):
+        with word_session.revision_tracking(app, doc, track_changes, DEFAULT_AUTHOR):
+            formatted = _apply_list_operation(
+                doc,
+                start_paragraph,
+                end_paragraph,
+                list_type,
+                level,
+                remove,
+                continue_previous,
+                options,
             )
+            if options["color"] is not None:
+                for index in range(start_paragraph, end_paragraph + 1):
+                    doc.Paragraphs(index).Range.Font.Color = options["color"]
 
-        with undo_record(app, "MCP: Apply List"):
-            with revision_tracking(app, doc, track_changes, DEFAULT_AUTHOR):
-                formatted = _apply_list_operation(
-                    doc,
-                    start_paragraph,
-                    end_paragraph,
-                    list_type,
-                    level,
-                    remove,
-                    continue_previous,
-                    options,
-                )
-                if options["color"] is not None:
-                    for index in range(start_paragraph, end_paragraph + 1):
-                        doc.Paragraphs(index).Range.Font.Color = options["color"]
-
-        action = "removed" if remove else f"applied {list_type}"
-        return json.dumps(
-            {
-                "success": True,
-                "document": doc.Name,
-                "action": action,
-                "paragraphs": f"{start_paragraph}-{end_paragraph}",
-                "count": formatted,
-                "level": level,
-                "tracked": track_changes,
-            }
-        )
-
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    action = "removed" if remove else f"applied {list_type}"
+    return {
+        "success": True,
+        "document": str(doc.Name),
+        "action": action,
+        "paragraphs": f"{start_paragraph}-{end_paragraph}",
+        "count": formatted,
+        "level": level,
+        "tracked": track_changes,
+    }

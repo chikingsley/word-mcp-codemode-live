@@ -3,8 +3,8 @@ from typing import Any
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools import hyperlinks as hyperlink_tools
+from word_mcp_codemode_live.word import session as word_com
 
 
 class _Range:
@@ -128,7 +128,7 @@ class _Document:
 @pytest.fixture
 def document(monkeypatch) -> _Document:
     document = _Document("Alpha beta omega")
-    monkeypatch.setattr(hyperlink_tools.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
     monkeypatch.setattr(word_com, "undo_record", lambda _app, _name: nullcontext())

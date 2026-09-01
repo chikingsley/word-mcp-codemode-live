@@ -1,9 +1,9 @@
 """Discover, insert, and update native Microsoft Word cross-references."""
 
-import sys
 from typing import Any, Literal
 
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
 
 ReferenceType = Literal[
     "numbered_item",
@@ -168,15 +168,12 @@ async def word_live_list_cross_reference_targets(
         Structured target records containing type, one-based position, and the
         exact label returned by Word.
     """
-    if sys.platform != "win32":
-        raise RuntimeError("Live cross-reference tools are only available on Windows")
+    word_session.require_windows("Live cross-reference tools")
     if reference_type not in _REFERENCE_TYPES:
         raise ValueError(f"reference_type must be one of: {', '.join(sorted(_REFERENCE_TYPES))}")
 
     try:
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app
-
-        document = find_document(get_word_app(), filename)
+        document = word_session.find_document(word_session.get_word_app(), filename)
         labels = _native_items(document, reference_type)
         targets = [
             {
@@ -236,8 +233,7 @@ async def word_live_insert_cross_reference(
     Returns:
         Structured insertion details including the selected native label.
     """
-    if sys.platform != "win32":
-        raise RuntimeError("Live cross-reference tools are only available on Windows")
+    word_session.require_windows("Live cross-reference tools")
     if reference_type not in _REFERENCE_TYPES:
         raise ValueError(f"reference_type must be one of: {', '.join(sorted(_REFERENCE_TYPES))}")
     if reference_kind not in _REFERENCE_KINDS:
@@ -254,10 +250,8 @@ async def word_live_insert_cross_reference(
         )
 
     try:
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
-
-        app = get_word_app()
-        document = find_document(app, filename)
+        app = word_session.get_word_app()
+        document = word_session.find_document(app, filename)
         labels = _native_items(document, reference_type)
         if target_index > len(labels):
             raise ValueError(
@@ -271,7 +265,7 @@ async def word_live_insert_cross_reference(
             paragraph_index=paragraph_index,
         )
 
-        with undo_record(app, "MCP: Insert Cross-Reference"):
+        with word_session.undo_record(app, "MCP: Insert Cross-Reference"):
             word_range.InsertCrossReference(
                 ReferenceType=_REFERENCE_TYPES[reference_type],
                 ReferenceKind=_REFERENCE_KINDS[reference_kind],

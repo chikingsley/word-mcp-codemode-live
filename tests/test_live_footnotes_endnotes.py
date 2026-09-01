@@ -1,11 +1,10 @@
-import json
 from contextlib import contextmanager
 from typing import Any
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools import notes as live_footnote_endnote_tools
+from word_mcp_codemode_live.word import session as word_com
 
 
 class FakeRange:
@@ -109,28 +108,24 @@ def fake_undo_record(_app: Any, _name: str):  # type: ignore[no-untyped-def]
 @pytest.mark.asyncio
 async def test_native_note_tools_add_list_and_delete(monkeypatch: pytest.MonkeyPatch) -> None:
     document = FakeDocument()
-    monkeypatch.setattr(live_footnote_endnote_tools.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
     monkeypatch.setattr(word_com, "undo_record", fake_undo_record)
 
-    added = json.loads(
-        await live_footnote_endnote_tools.word_live_edit_footnotes_endnotes(
-            operation="add",
-            note_type="footnote",
-            paragraph_index=1,
-            text="Native note",
-        )
+    added = await live_footnote_endnote_tools.word_live_edit_footnotes_endnotes(
+        operation="add",
+        note_type="footnote",
+        paragraph_index=1,
+        text="Native note",
     )
-    listed = json.loads(
-        await live_footnote_endnote_tools.word_live_list_footnotes_endnotes(note_type="all")
-    )
+    listed = await live_footnote_endnote_tools.word_live_list_footnotes_endnotes(note_type="all")
 
-    assert added["success"] is True
-    assert added["reference_start"] == 19
-    assert added["before"] == {"footnotes": 0, "endnotes": 0}
-    assert added["after"] == {"footnotes": 1, "endnotes": 0}
-    assert listed["notes"] == [
+    assert added.success is True
+    assert added.reference_start == 19
+    assert added.before == {"footnotes": 0, "endnotes": 0}
+    assert added.after == {"footnotes": 1, "endnotes": 0}
+    assert [note.model_dump() for note in listed.notes] == [
         {
             "index": 1,
             "type": "footnote",
@@ -140,23 +135,21 @@ async def test_native_note_tools_add_list_and_delete(monkeypatch: pytest.MonkeyP
         }
     ]
 
-    deleted = json.loads(
-        await live_footnote_endnote_tools.word_live_edit_footnotes_endnotes(
-            operation="delete",
-            note_type="footnote",
-            note_index=1,
-        )
+    deleted = await live_footnote_endnote_tools.word_live_edit_footnotes_endnotes(
+        operation="delete",
+        note_type="footnote",
+        note_index=1,
     )
 
-    assert deleted["success"] is True
-    assert deleted["deleted_text"] == "Native note"
-    assert deleted["after"] == {"footnotes": 0, "endnotes": 0}
+    assert deleted.success is True
+    assert deleted.deleted_text == "Native note"
+    assert deleted.after == {"footnotes": 0, "endnotes": 0}
 
 
 @pytest.mark.asyncio
 async def test_get_and_set_native_note_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
     document = FakeDocument()
-    monkeypatch.setattr(live_footnote_endnote_tools.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
     monkeypatch.setattr(word_com, "undo_record", fake_undo_record)
@@ -202,7 +195,7 @@ async def test_get_and_set_native_note_configuration(monkeypatch: pytest.MonkeyP
 async def test_note_configuration_validates_type_specific_location(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(live_footnote_endnote_tools.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
 
     with pytest.raises(ValueError, match="location for endnote"):
         await live_footnote_endnote_tools.word_live_set_note_configuration(
@@ -215,7 +208,7 @@ async def test_note_configuration_rejects_custom_start_with_restart_rule(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     document = FakeDocument()
-    monkeypatch.setattr(live_footnote_endnote_tools.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
 

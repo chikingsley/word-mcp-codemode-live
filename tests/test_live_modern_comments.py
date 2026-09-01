@@ -4,8 +4,8 @@ from typing import Any
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools.comments import word_live_set_comment_status
+from word_mcp_codemode_live.word import session as word_com
 
 
 class _Comment:
@@ -55,7 +55,7 @@ async def test_resolve_comment_thread(monkeypatch) -> None:
 
     result = await word_live_set_comment_status("comments.docx", 1, True)
 
-    assert result == {
+    assert result.model_dump() == {
         "success": True,
         "document": "comments.docx",
         "comment_index": 1,
@@ -75,9 +75,9 @@ async def test_reopen_comment_thread(monkeypatch) -> None:
 
     result = await word_live_set_comment_status("comments.docx", 1, False)
 
-    assert result["previous_resolved"] is True
-    assert result["resolved"] is False
-    assert result["changed"] is True
+    assert result.previous_resolved is True
+    assert result.resolved is False
+    assert result.changed is True
     assert comment.Done is False
     assert len(undo_labels) == 1
     assert undo_labels[0].startswith("MCP: Reopen Comment [")
@@ -90,8 +90,8 @@ async def test_matching_status_is_a_noop(monkeypatch) -> None:
 
     result = await word_live_set_comment_status("comments.docx", 1, True)
 
-    assert result["resolved"] is True
-    assert result["changed"] is False
+    assert result.resolved is True
+    assert result.changed is False
     assert undo_labels == []
 
 

@@ -1,9 +1,10 @@
 """Create, inspect, update, and delete custom styles in open Word documents."""
 
-import sys
 from typing import Any, Literal
 
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
+from word_mcp_codemode_live.word.values import rgb_hex_to_word
 
 StyleKind = Literal["paragraph", "character"]
 
@@ -19,11 +20,6 @@ _STYLE_TYPE_NAMES = {
 _ALIGNMENTS = {"left": 0, "center": 1, "right": 2, "justify": 3, "distribute": 4}
 _ALIGNMENT_NAMES = {value: name for name, value in _ALIGNMENTS.items()}
 _MIXED = 9999999
-
-
-def _require_windows() -> None:
-    if sys.platform != "win32":
-        raise RuntimeError("Live style tools are only available on Windows")
 
 
 def _style_by_name(document: Any, style_name: str) -> Any:
@@ -94,8 +90,6 @@ def _style_entry(style: Any, index: int | None = None) -> dict[str, Any]:
 
 
 def _color_value(color: str) -> int:
-    from word_mcp_codemode_live.core.word_values import rgb_hex_to_word
-
     return rgb_hex_to_word(color, field_name="font_color")
 
 
@@ -229,10 +223,9 @@ def _uses_paragraph_properties(
 @word_tool(title="Word Live List Custom Styles", domain="styles", change="read")
 async def word_live_list_custom_styles(filename: str | None = None) -> dict[str, Any]:
     """List user-defined Word styles. Returned indexes are one-based."""
-    _require_windows()
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app
+    word_session.require_windows("Live style tools")
 
-    document = find_document(get_word_app(), filename)
+    document = word_session.find_document(word_session.get_word_app(), filename)
     styles = []
     for collection_index in range(1, int(document.Styles.Count) + 1):
         style = document.Styles(collection_index)
@@ -272,7 +265,7 @@ async def word_live_create_custom_style(
     outline_level: int | None = None,
 ) -> dict[str, Any]:
     """Create a custom paragraph or character style in an open Word document."""
-    _require_windows()
+    word_session.require_windows("Live style tools")
     style_name = style_name.strip()
     if not style_name:
         raise ValueError("style_name is required")
@@ -301,14 +294,8 @@ async def word_live_create_custom_style(
     )
     color_value = _color_value(font_color) if font_color is not None else None
 
-    from word_mcp_codemode_live.core.word_com import (
-        find_document,
-        get_word_app,
-        undo_transaction,
-    )
-
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     style_exists = True
     try:
         document.Styles(style_name)
@@ -318,7 +305,7 @@ async def word_live_create_custom_style(
         raise ValueError(f"A Word style named {style_name!r} already exists")
     base = _style_by_name(document, base_style) if base_style is not None else None
 
-    with undo_transaction(app, document, "MCP: Create Custom Style"):
+    with word_session.undo_transaction(app, document, "MCP: Create Custom Style"):
         style = document.Styles.Add(Name=style_name, Type=_STYLE_TYPES[style_type])
         _apply_style_properties(
             style,
@@ -369,7 +356,7 @@ async def word_live_update_custom_style(
     outline_level: int | None = None,
 ) -> dict[str, Any]:
     """Update formatting or inheritance of an existing custom Word style."""
-    _require_windows()
+    word_session.require_windows("Live style tools")
     style_name = style_name.strip()
     if not style_name:
         raise ValueError("style_name is required")
@@ -381,14 +368,8 @@ async def word_live_update_custom_style(
     )
     color_value = _color_value(font_color) if font_color is not None else None
 
-    from word_mcp_codemode_live.core.word_com import (
-        find_document,
-        get_word_app,
-        undo_transaction,
-    )
-
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     style = _style_by_name(document, style_name)
     if bool(style.BuiltIn):
         raise ValueError("Only custom styles can be updated by this tool")
@@ -408,7 +389,7 @@ async def word_live_update_custom_style(
     if int(style.Type) == 2 and automatically_update is not None:
         raise ValueError("automatically_update is not supported for character styles")
     base = _style_by_name(document, base_style) if base_style is not None else None
-    with undo_transaction(app, document, "MCP: Update Custom Style"):
+    with word_session.undo_transaction(app, document, "MCP: Update Custom Style"):
         _apply_style_properties(
             style,
             base_style=base,
@@ -440,23 +421,18 @@ async def word_live_delete_custom_style(
     style_name: str = "",
 ) -> dict[str, Any]:
     """Delete one user-defined Word style; built-in styles are rejected."""
-    _require_windows()
+    word_session.require_windows("Live style tools")
     style_name = style_name.strip()
     if not style_name:
         raise ValueError("style_name is required")
-    from word_mcp_codemode_live.core.word_com import (
-        find_document,
-        get_word_app,
-        undo_transaction,
-    )
 
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     style = _style_by_name(document, style_name)
     if bool(style.BuiltIn):
         raise ValueError("Built-in Word styles cannot be deleted by this tool")
     deleted = _style_entry(style)
-    with undo_transaction(app, document, "MCP: Delete Custom Style"):
+    with word_session.undo_transaction(app, document, "MCP: Delete Custom Style"):
         style.Delete()
     return {
         "success": True,

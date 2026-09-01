@@ -1,9 +1,9 @@
 """Objective pagination and page-geometry inspection for open Word documents."""
 
-import sys
 from typing import Any
 
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
 
 _SECTION_START_NAMES = {
     0: "continuous",
@@ -58,14 +58,11 @@ async def word_live_inspect_layout(
     carrying pagination controls. ``max_controlled_paragraphs`` limits only the
     detailed paragraph rows, not the counts.
     """
-    if sys.platform != "win32":
-        raise RuntimeError("Live layout tools are only available on Windows")
+    word_session.require_windows("Live layout diagnostics")
     if max_controlled_paragraphs < 1 or max_controlled_paragraphs > 2_000:
         raise ValueError("max_controlled_paragraphs must be between 1 and 2000")
 
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app
-
-    document = find_document(get_word_app(), filename)
+    document = word_session.find_document(word_session.get_word_app(), filename)
     page_count = int(document.ComputeStatistics(2))  # wdStatisticPages
     sections: list[dict[str, Any]] = []
     findings: list[dict[str, Any]] = []

@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from word_mcp_codemode_live.core.word_com import find_document, undo_record, undo_transaction
+from word_mcp_codemode_live.word.session import find_document, undo_record, undo_transaction
 
 
 class _UndoRecord:

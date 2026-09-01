@@ -13,12 +13,12 @@ from typing import Any, get_args, get_type_hints
 from fastmcp.tools import ToolResult
 from fastmcp.utilities.types import Image
 from mcp.types import TextContent
-from pydantic import validate_call
+from pydantic import BaseModel, validate_call
 
 from word_mcp_codemode_live import tools as tools_package
-from word_mcp_codemode_live.core.word_com import undo_named_record, unique_undo_name
-from word_mcp_codemode_live.tools.capture import render_word_pages
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
+from word_mcp_codemode_live.word.rendering import render_word_pages
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +137,9 @@ def _operation_pages(document: Any, operation: dict[str, Any]) -> set[int]:
 
 
 def _parse_nested_result(tool_name: str, result: Any) -> Any:
-    if isinstance(result, str):
+    if isinstance(result, BaseModel):
+        parsed = result.model_dump(mode="json")
+    elif isinstance(result, str):
         try:
             parsed = json.loads(result)
         except json.JSONDecodeError:
@@ -178,7 +180,7 @@ def _undo_batch(document: Any, app: Any, undo_name: str, mutation_attempted: boo
     if not mutation_attempted:
         return False
 
-    return undo_named_record(document, app, undo_name)
+    return word_session.undo_named_record(document, app, undo_name)
 
 
 def _prepare_operation(
@@ -259,13 +261,12 @@ async def _execute_prepared(
     undo_name: str,
     prepared: list[tuple[str, ValidatedBatchTool, dict[str, Any]]],
 ) -> list[dict[str, Any]]:
-    from word_mcp_codemode_live.core.word_com import undo_record
 
     results: list[dict[str, Any]] = []
     failed_index: int | None = None
     mutation_attempted = False
     try:
-        with _batch_ui_state(app), undo_record(app, undo_name):
+        with _batch_ui_state(app), word_session.undo_record(app, undo_name):
             for index, (tool_name, tool, arguments) in enumerate(prepared):
                 failed_index = index
                 mutation_attempted = True
@@ -360,10 +361,8 @@ async def word_live_edit_batch(
             "operations must not be empty", rolled_back=False, operation_index=None
         )
 
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app
-
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     before = _document_stats(document)
     affected_pages: set[int] = set()
     for operation in operations:
@@ -375,7 +374,7 @@ async def word_live_edit_batch(
         return _error_result(str(exc), rolled_back=False, operation_index=exc.index)
 
     timings: dict[str, float] = {}
-    actual_undo_name = unique_undo_name(undo_name)
+    actual_undo_name = word_session.unique_undo_name(undo_name)
     batch_started = perf_counter()
     edit_started = batch_started
     try:

@@ -4,8 +4,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
+from word_mcp_codemode_live import snapshot_format
 from word_mcp_codemode_live.tools import snapshots
+from word_mcp_codemode_live.word import session as word_com
 
 
 class FakeCollection:
@@ -62,7 +63,7 @@ async def test_create_snapshot_is_versioned_deterministic_and_refuses_overwrite(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     document = fake_document(tmp_path / "source.docx", ["Alpha", "Beta"])
-    monkeypatch.setattr(snapshots.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
     destination = tmp_path / "baseline.json"
@@ -94,12 +95,12 @@ async def test_diff_uses_sequence_semantics_and_ignores_word_offsets(tmp_path: P
     # Simulate repagination/range movement without semantic content change.
     after["content"]["paragraphs"][1]["start_offset"] = 500
     after["content"]["paragraphs"][1]["end_offset"] = 506
-    after["content_sha256"] = snapshots._content_hash(after["content"])
-    after["envelope_sha256"] = snapshots._envelope_hash(after)
+    after["content_sha256"] = snapshot_format.content_hash(after["content"])
+    after["envelope_sha256"] = snapshot_format.envelope_hash(after)
     before_path = tmp_path / "before.json"
     after_path = tmp_path / "after.json"
-    snapshots._write_snapshot(before_path, before, overwrite=False)
-    snapshots._write_snapshot(after_path, after, overwrite=False)
+    snapshot_format.write_snapshot(before_path, before, overwrite=False)
+    snapshot_format.write_snapshot(after_path, after, overwrite=False)
 
     result = await snapshots.word_live_diff_document_snapshots(str(before_path), str(after_path))
 
@@ -134,8 +135,8 @@ async def test_diff_refuses_cross_document_and_detects_tampering(tmp_path: Path)
     after = snapshots._capture(fake_document(tmp_path / "two.docx", ["Same"]))
     before_path = tmp_path / "before.json"
     after_path = tmp_path / "after.json"
-    snapshots._write_snapshot(before_path, before, overwrite=False)
-    snapshots._write_snapshot(after_path, after, overwrite=False)
+    snapshot_format.write_snapshot(before_path, before, overwrite=False)
+    snapshot_format.write_snapshot(after_path, after, overwrite=False)
 
     with pytest.raises(ValueError, match="different source paths"):
         await snapshots.word_live_diff_document_snapshots(str(before_path), str(after_path))
@@ -158,6 +159,6 @@ async def test_diff_refuses_cross_document_and_detects_tampering(tmp_path: Path)
 
 def test_snapshot_path_validation_requires_json_and_existing_parent(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match=".json extension"):
-        snapshots._snapshot_path(str(tmp_path / "snapshot.txt"))
+        snapshot_format.snapshot_path(str(tmp_path / "snapshot.txt"))
     with pytest.raises(ValueError, match="parent directory"):
-        snapshots._snapshot_path(str(tmp_path / "missing" / "snapshot.json"))
+        snapshot_format.snapshot_path(str(tmp_path / "missing" / "snapshot.json"))

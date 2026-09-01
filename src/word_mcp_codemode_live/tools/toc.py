@@ -1,18 +1,13 @@
 """Create, inspect, update, and delete native Microsoft Word TOCs."""
 
-import sys
 from typing import Any, Literal
 
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
 
 TocTarget = Literal["document_start", "document_end", "paragraph_start", "paragraph_end"]
 TocUpdateMode = Literal["all", "page_numbers"]
 _TOC_TARGETS = {"document_start", "document_end", "paragraph_start", "paragraph_end"}
-
-
-def _require_windows() -> None:
-    if sys.platform != "win32":
-        raise RuntimeError("Live table-of-contents tools are only available on Windows")
 
 
 def _toc_entry(toc: Any, index: int) -> dict[str, Any]:
@@ -90,10 +85,9 @@ async def word_live_list_tables_of_contents(filename: str | None = None) -> dict
     TOC indexes are one-based. Range properties are explicitly named zero-based
     offsets to match Word's native character-position model.
     """
-    _require_windows()
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app
+    word_session.require_windows("Live table-of-contents tools")
 
-    document = find_document(get_word_app(), filename)
+    document = word_session.find_document(word_session.get_word_app(), filename)
     collection = document.TablesOfContents
     entries = [
         _toc_entry(collection(index), index) for index in range(1, int(collection.Count) + 1)
@@ -128,7 +122,7 @@ async def word_live_create_table_of_contents(
     ``paragraph_index`` is one-based and required only for ``paragraph_start``
     or ``paragraph_end``. Heading levels are inclusive and must be from 1 to 9.
     """
-    _require_windows()
+    word_session.require_windows("Live table-of-contents tools")
     if target not in _TOC_TARGETS:
         raise ValueError(f"target must be one of {sorted(_TOC_TARGETS)}")
     if not 1 <= upper_heading_level <= 9:
@@ -138,13 +132,11 @@ async def word_live_create_table_of_contents(
     if upper_heading_level > lower_heading_level:
         raise ValueError("upper_heading_level cannot exceed lower_heading_level")
 
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
-
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     word_range = _target_range(document, target, paragraph_index)
     insertion_offset = int(word_range.Start)
-    with undo_record(app, "MCP: Create Table of Contents"):
+    with word_session.undo_record(app, "MCP: Create Table of Contents"):
         toc = document.TablesOfContents.Add(
             Range=word_range,
             UseHeadingStyles=True,
@@ -184,15 +176,14 @@ async def word_live_update_table_of_contents(
     ``mode='all'`` refreshes entries and page numbers. ``mode='page_numbers'``
     preserves the entry set and refreshes page numbers only.
     """
-    _require_windows()
+    word_session.require_windows("Live table-of-contents tools")
     if mode not in {"all", "page_numbers"}:
         raise ValueError("mode must be all or page_numbers")
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
 
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     toc = _get_toc(document, toc_index)
-    with undo_record(app, "MCP: Update Table of Contents"):
+    with word_session.undo_record(app, "MCP: Update Table of Contents"):
         if mode == "all":
             toc.Update()
         else:
@@ -216,14 +207,13 @@ async def word_live_delete_table_of_contents(
     toc_index: int = 1,
 ) -> dict[str, Any]:
     """Delete one native TOC by its one-based index."""
-    _require_windows()
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
+    word_session.require_windows("Live table-of-contents tools")
 
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     toc = _get_toc(document, toc_index)
     deleted = _toc_entry(toc, toc_index)
-    with undo_record(app, "MCP: Delete Table of Contents"):
+    with word_session.undo_record(app, "MCP: Delete Table of Contents"):
         toc.Delete()
     return {
         "success": True,

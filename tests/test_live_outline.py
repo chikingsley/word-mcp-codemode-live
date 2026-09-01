@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools import outline as live_outline
+from word_mcp_codemode_live.word import session as word_com
 
 
 class FakeRange:
@@ -50,7 +50,7 @@ def fake_document(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
             ]
         ),
     )
-    monkeypatch.setattr(live_outline.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
     return document

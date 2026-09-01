@@ -1,11 +1,10 @@
-import json
 import os
 from types import SimpleNamespace
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools import lifecycle
+from word_mcp_codemode_live.word import session as word_com
 
 
 @pytest.mark.asyncio
@@ -27,13 +26,13 @@ async def test_open_uses_the_shared_word_instance_resolver(tmp_path, monkeypatch
             return document
 
     app = SimpleNamespace(Documents=Documents(), Visible=False)
-    monkeypatch.setattr(lifecycle.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: app)
     monkeypatch.setattr(word_com, "remember_word_app", lambda value: value)
 
-    result = json.loads(await lifecycle.word_live_open(str(path)))
+    result = await lifecycle.word_live_open(str(path))
 
-    assert result["success"] is True
+    assert result.success is True
     assert opened == [str(path)]
     assert app.Visible is True
 
@@ -49,12 +48,11 @@ async def test_close_requires_explicit_unsaved_policy(monkeypatch) -> None:
     )
     documents = SimpleNamespace(Count=1)
     app = SimpleNamespace(Documents=documents, ActiveDocument=document)
-    monkeypatch.setattr(lifecycle.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: app)
 
-    result = json.loads(await lifecycle.word_live_close())
-
-    assert "unsaved changes" in result["error"]
+    with pytest.raises(RuntimeError, match="unsaved changes"):
+        await lifecycle.word_live_close()
     assert close_calls == []
 
 
@@ -79,13 +77,13 @@ async def test_close_can_save_before_closing(monkeypatch) -> None:
     document.Save = save
     document.Close = close
     app = SimpleNamespace(Documents=documents, ActiveDocument=document)
-    monkeypatch.setattr(lifecycle.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: app)
 
-    result = json.loads(await lifecycle.word_live_close(save_mode="save"))
+    result = await lifecycle.word_live_close(save_mode="save")
 
-    assert result["success"] is True
-    assert result["remaining_open_documents"] == 0
+    assert result.success is True
+    assert result.remaining_open_documents == 0
     assert calls == ["save", "close:0"]
 
 
@@ -114,13 +112,13 @@ async def test_rename_moves_open_document_without_leaving_source(tmp_path, monke
     document = Document()
     documents = SimpleNamespace(Count=1)
     app = SimpleNamespace(Documents=documents, ActiveDocument=document, DisplayAlerts=-1)
-    monkeypatch.setattr(lifecycle.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: app)
 
-    result = json.loads(await lifecycle.word_live_rename(str(destination)))
+    result = await lifecycle.word_live_rename(str(destination))
 
-    assert result["success"] is True
-    assert result["original_removed"] is True
+    assert result.success is True
+    assert result.original_removed is True
     assert not original.exists()
     assert destination.read_bytes() == b"document payload"
     assert document.FullName == str(destination)

@@ -44,9 +44,23 @@ jobs:
         run: |
           uv run ty check
           uv run vulture
+          uv run lint-imports
 
       - name: Run tests
         run: uv run pytest -q
+
+      - name: Check branch coverage
+        # FastMCP's filesystem-provider tests disrupt Python tracing. They run
+        # above, while this pass measures the stable unit-test surface.
+        run: >-
+          uv run pytest -q
+          --ignore=tests/test_server.py
+          --ignore=tests/test_code_mode.py
+          --ignore=tests/test_live_batch.py
+          --cov=word_mcp_codemode_live
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=40
 
       - name: Build distributions
         run: uv build --no-sources

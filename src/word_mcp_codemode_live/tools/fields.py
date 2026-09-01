@@ -1,32 +1,13 @@
 """Inspect and update native Microsoft Word fields in open documents."""
 
 import logging
-import sys
 from typing import Any
 
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
+from word_mcp_codemode_live.word.stories import collect_story_ranges
 
 logger = logging.getLogger(__name__)
-
-_STORY_NAMES = {
-    1: "main_text",
-    2: "footnotes",
-    3: "endnotes",
-    4: "comments",
-    5: "text_frames",
-    6: "even_pages_header",
-    7: "primary_header",
-    8: "even_pages_footer",
-    9: "primary_footer",
-    10: "first_page_header",
-    11: "first_page_footer",
-    12: "footnote_separator",
-    13: "footnote_continuation_separator",
-    14: "footnote_continuation_notice",
-    15: "endnote_separator",
-    16: "endnote_continuation_separator",
-    17: "endnote_continuation_notice",
-}
 
 _FIELD_NAMES = {
     -1: "empty",
@@ -87,39 +68,11 @@ _FIELD_NAMES = {
 }
 
 
-def _require_windows() -> None:
-    if sys.platform != "win32":
-        raise RuntimeError("Live field tools are only available on Windows")
-
-
-def _story_ranges(document: Any) -> list[tuple[int, int, Any]]:
-    """Return every populated Word story and linked story range."""
-    stories: list[tuple[int, int, Any]] = []
-    for story_type in _STORY_NAMES:
-        try:
-            story_range = document.StoryRanges(story_type)
-        except Exception as exc:
-            logger.debug("Word story %s is unavailable: %s", story_type, exc)
-            continue
-
-        instance_index = 1
-        while story_range is not None:
-            stories.append((story_type, instance_index, story_range))
-            instance_index += 1
-            # Word links section-specific headers, footers, and text frames with
-            # NextStoryRange. Guard against a malformed COM chain looping forever.
-            if instance_index > 10_000:
-                raise RuntimeError(f"Word returned a cyclic story chain for story {story_type}")
-            try:
-                story_range = story_range.NextStoryRange
-            except Exception:
-                story_range = None
-    return stories
-
-
 def _field_rows(document: Any) -> list[tuple[dict[str, Any], Any]]:
     rows: list[tuple[dict[str, Any], Any]] = []
-    for story_type, story_instance_index, story_range in _story_ranges(document):
+    story_ranges, _ = collect_story_ranges(document)
+    for story in story_ranges:
+        story_range = story.com_range
         fields = story_range.Fields
         for story_field_index in range(1, int(fields.Count) + 1):
             field = fields(story_field_index)
@@ -140,9 +93,9 @@ def _field_rows(document: Any) -> list[tuple[dict[str, Any], Any]]:
                 (
                     {
                         "index": len(rows) + 1,
-                        "story": _STORY_NAMES[story_type],
-                        "story_type_id": story_type,
-                        "story_instance_index": story_instance_index,
+                        "story": story.name,
+                        "story_type_id": story.story_type,
+                        "story_instance_index": story.instance_index,
                         "story_field_index": story_field_index,
                         "type": _FIELD_NAMES.get(field_type_id, "unknown"),
                         "type_id": field_type_id,
@@ -173,10 +126,9 @@ async def word_live_list_fields(filename: str | None = None) -> dict[str, Any]:
     Args:
         filename: Open document name or full path (None = active document).
     """
-    _require_windows()
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app
+    word_session.require_windows("Live field tools")
 
-    document = find_document(get_word_app(), filename)
+    document = word_session.find_document(word_session.get_word_app(), filename)
     fields = [row for row, _field in _field_rows(document)]
     return {
         "success": True,
@@ -203,7 +155,7 @@ async def word_live_update_fields(
         field_indices: Optional unique one-based indexes from ``word_live_list_fields``.
             Omit to update every field across every document story.
     """
-    _require_windows()
+    word_session.require_windows("Live field tools")
     if field_indices is not None:
         if not field_indices:
             raise ValueError("field_indices cannot be empty; omit it to update all fields")
@@ -212,14 +164,8 @@ async def word_live_update_fields(
         if len(set(field_indices)) != len(field_indices):
             raise ValueError("field_indices must not contain duplicates")
 
-    from word_mcp_codemode_live.core.word_com import (
-        find_document,
-        get_word_app,
-        undo_record,
-    )
-
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     rows = _field_rows(document)
     selected = list(range(1, len(rows) + 1)) if field_indices is None else field_indices
     missing = [index for index in selected if index > len(rows)]
@@ -229,7 +175,7 @@ async def word_live_update_fields(
         )
 
     updated: list[dict[str, Any]] = []
-    with undo_record(app, "MCP: Update Fields"):
+    with word_session.undo_record(app, "MCP: Update Fields"):
         for index in selected:
             before, field = rows[index - 1]
             try:
@@ -284,7 +230,7 @@ async def word_live_unlink_fields(
             Omit to unlink every unlinkable field. If omitted and the document
             contains a known non-unlinkable field, no fields are changed.
     """
-    _require_windows()
+    word_session.require_windows("Live field tools")
     if field_indices is not None:
         if not field_indices:
             raise ValueError("field_indices cannot be empty; omit it to unlink all fields")
@@ -293,14 +239,8 @@ async def word_live_unlink_fields(
         if len(set(field_indices)) != len(field_indices):
             raise ValueError("field_indices must not contain duplicates")
 
-    from word_mcp_codemode_live.core.word_com import (
-        find_document,
-        get_word_app,
-        undo_transaction,
-    )
-
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     rows = _field_rows(document)
     selected = list(range(1, len(rows) + 1)) if field_indices is None else field_indices
     missing = [index for index in selected if index > len(rows)]
@@ -320,7 +260,7 @@ async def word_live_unlink_fields(
         )
 
     unlinked_by_index: dict[int, dict[str, Any]] = {}
-    with undo_transaction(app, document, "MCP: Unlink Fields"):
+    with word_session.undo_transaction(app, document, "MCP: Unlink Fields"):
         # Work backwards so unlinking a field cannot invalidate later fields in
         # the same story. Return entries in the caller's requested order below.
         for index in sorted(selected, reverse=True):

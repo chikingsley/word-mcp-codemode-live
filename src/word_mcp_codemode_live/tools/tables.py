@@ -1,13 +1,16 @@
 """Create, format, and modify tables in live Word documents."""
 
-import json
 import logging
 import re
-import sys
-from typing import Any
+from typing import Annotated, Any, Literal
+
+from pydantic import Field
 
 from word_mcp_codemode_live.defaults import DEFAULT_AUTHOR
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
+from word_mcp_codemode_live.word import tables as table_com
+from word_mcp_codemode_live.word.values import rgb_hex_to_word
 
 logger = logging.getLogger(__name__)
 
@@ -198,8 +201,6 @@ def _apply_cell_alignment(table: Any, entries: list | None, actions: list[str]) 
 
 
 def _apply_cell_shading(table: Any, entries: list | None, actions: list[str]) -> None:
-    from word_mcp_codemode_live.core.word_values import rgb_hex_to_word
-
     for row, column, color in entries or []:
         value = rgb_hex_to_word(str(color), field_name="cell shading color")
         for row_index, column_index in _cell_coordinates(table, int(row), int(column)):
@@ -271,14 +272,14 @@ def _execute_table_operation(table_com: Any, table: Any, operation: str, values:
 @word_tool(title="Word Live Add Table", domain="tables", change="edit", batchable=True)
 async def word_live_add_table(
     filename: str | None = None,
-    rows: int = 2,
-    cols: int = 2,
+    rows: Annotated[int, Field(ge=1)] = 2,
+    cols: Annotated[int, Field(ge=1)] = 2,
     position: str = "end",
     data: list | None = None,
     style: str = "Table Grid",
-    autofit: str = "window",
+    autofit: Literal["window", "content", "fixed"] | None = "window",
     track_changes: bool = False,
-) -> str:
+) -> dict[str, Any]:
     """Add a table to an open Word document.
 
     Args:
@@ -297,69 +298,55 @@ async def word_live_add_table(
         JSON with result info.
     """
 
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live editing is only available on Windows"})
+    word_session.require_windows("Live Word editing")
 
     if rows < 1 or cols < 1:
-        return json.dumps({"error": "rows and cols must be at least 1"})
+        raise ValueError("rows and cols must be at least 1")
     autofit_map = {
         "window": (1, 2),
         "content": (1, 1),
         "fixed": (0, 0),
     }
     if autofit is not None and autofit.casefold() not in autofit_map:
-        return json.dumps({"error": "autofit must be window, content, fixed, or null"})
+        raise ValueError("autofit must be window, content, fixed, or null")
 
-    try:
-        from word_mcp_codemode_live.core.word_com import (
-            find_document,
-            get_word_app,
-            revision_tracking,
-            undo_record,
-        )
+    _validate_table_data(data, rows, cols)
+    app = word_session.get_word_app()
+    doc = word_session.find_document(app, filename)
 
-        _validate_table_data(data, rows, cols)
-        app = get_word_app()
-        doc = find_document(app, filename)
+    if style:
+        try:
+            resolved_style = doc.Styles(style)
+        except Exception as exc:
+            raise ValueError(f"Word table style not found: {style}") from exc
+    else:
+        resolved_style = None
 
-        if style:
-            try:
-                resolved_style = doc.Styles(style)
-            except Exception:
-                return json.dumps({"error": f"Word table style not found: {style}"})
-        else:
-            resolved_style = None
+    rng = _insertion_range(doc, position)
 
-        rng = _insertion_range(doc, position)
-
-        with undo_record(app, "MCP: Add Table"):
-            with revision_tracking(app, doc, track_changes, DEFAULT_AUTHOR):
-                if autofit:
-                    default_behavior, autofit_behavior = autofit_map[autofit.casefold()]
-                    table = doc.Tables.Add(rng, rows, cols, default_behavior, autofit_behavior)
-                else:
-                    table = doc.Tables.Add(rng, rows, cols)
+    with word_session.undo_record(app, "MCP: Add Table"):
+        with word_session.revision_tracking(app, doc, track_changes, DEFAULT_AUTHOR):
+            if autofit:
+                default_behavior, autofit_behavior = autofit_map[autofit.casefold()]
+                table = doc.Tables.Add(rng, rows, cols, default_behavior, autofit_behavior)
+            else:
+                table = doc.Tables.Add(rng, rows, cols)
 
                 # Apply table style
-                if resolved_style is not None:
-                    table.Style = resolved_style
-                _populate_table(table, data)
+            if resolved_style is not None:
+                table.Style = resolved_style
+            _populate_table(table, data)
 
-        return json.dumps(
-            {
-                "success": True,
-                "document": doc.Name,
-                "rows": rows,
-                "cols": cols,
-                "position": position,
-                "style": style or None,
-                "autofit": autofit or None,
-                "tracked": track_changes,
-            }
-        )
-
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    return {
+        "success": True,
+        "document": str(doc.Name),
+        "rows": rows,
+        "cols": cols,
+        "position": position,
+        "style": style or None,
+        "autofit": autofit or None,
+        "tracked": track_changes,
+    }
 
 
 @word_tool(title="Word Live Format Table", domain="tables", change="edit", batchable=True)
@@ -376,7 +363,7 @@ async def word_live_format_table(
     left_indent_points: float | None = None,
     font_name: str | None = None,
     font_size: float | None = None,
-) -> str:
+) -> dict[str, Any]:
     """Format a table in an open Word document via COM.
 
     Supports border removal, cell formatting, column sizing, and table alignment.
@@ -406,56 +393,58 @@ async def word_live_format_table(
         JSON with result info.
     """
 
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live editing is only available on Windows"})
+    word_session.require_windows("Live Word editing")
+    app = word_session.get_word_app()
+    doc = word_session.find_document(app, filename)
+    tbl, idx = _resolve_table(doc, table_index)
+    options = {
+        "border_style": border_style,
+        "cell_bold": cell_bold,
+        "cell_alignment": cell_alignment,
+        "column_widths": column_widths,
+        "table_alignment": table_alignment,
+        "cell_shading": cell_shading,
+        "autofit": autofit,
+        "left_indent_points": left_indent_points,
+        "font_name": font_name,
+        "font_size": font_size,
+    }
+    _validate_table_format(tbl, options)
+    actions: list[str] = []
 
-    try:
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
+    with word_session.undo_record(app, "MCP: Format Table"):
+        warnings = _apply_table_borders(tbl, border_style, actions)
+        _apply_table_properties(tbl, options, actions)
+        _apply_table_cells(tbl, options, actions)
 
-        app = get_word_app()
-        doc = find_document(app, filename)
-        tbl, idx = _resolve_table(doc, table_index)
-        options = {
-            "border_style": border_style,
-            "cell_bold": cell_bold,
-            "cell_alignment": cell_alignment,
-            "column_widths": column_widths,
-            "table_alignment": table_alignment,
-            "cell_shading": cell_shading,
-            "autofit": autofit,
-            "left_indent_points": left_indent_points,
-            "font_name": font_name,
-            "font_size": font_size,
-        }
-        _validate_table_format(tbl, options)
-        actions: list[str] = []
-
-        with undo_record(app, "MCP: Format Table"):
-            warnings = _apply_table_borders(tbl, border_style, actions)
-            _apply_table_properties(tbl, options, actions)
-            _apply_table_cells(tbl, options, actions)
-
-        return json.dumps(
-            {
-                "success": True,
-                "document": doc.Name,
-                "table_index": idx,
-                "rows": tbl.Rows.Count,
-                "cols": tbl.Columns.Count,
-                "actions": actions,
-                "warnings": warnings,
-            }
-        )
-
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    return {
+        "success": True,
+        "document": str(doc.Name),
+        "table_index": idx,
+        "rows": int(tbl.Rows.Count),
+        "cols": int(tbl.Columns.Count),
+        "actions": actions,
+        "warnings": warnings,
+    }
 
 
 @word_tool(title="Word Live Modify Table", domain="tables", change="edit", batchable=True)
 async def word_live_modify_table(
     filename: str | None = None,
-    table_index: int = 1,
-    operation: str = "get_info",
+    table_index: Annotated[int, Field(ge=1)] = 1,
+    operation: Literal[
+        "get_info",
+        "set_cell",
+        "set_row",
+        "set_range",
+        "add_column",
+        "delete_column",
+        "add_row",
+        "delete_row",
+        "merge_cells",
+        "autofit",
+        "delete_table",
+    ] = "get_info",
     row: int | None = None,
     col: int | None = None,
     text: str | None = None,
@@ -471,7 +460,7 @@ async def word_live_modify_table(
     accept_revisions: bool = False,
     track_changes: bool = False,
     scrub_orphans: bool = True,
-) -> str:
+) -> dict[str, Any]:
     """[Windows only] Modify a table in an open Word document.
 
     Operations: get_info, set_cell, set_row, set_range, add_column, delete_column,
@@ -506,79 +495,60 @@ async def word_live_modify_table(
         JSON with operation result.
     """
 
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live editing is only available on Windows"})
+    word_session.require_windows("Live Word editing")
+    app = word_session.get_word_app()
+    doc = word_session.find_document(app, filename)
 
+    # Per-call validation: re-read Tables.Count fresh in case a prior
+    # MCP call (especially delete_table) reduced or zeroed the count.
     try:
-        from word_mcp_codemode_live.core import table_com
-        from word_mcp_codemode_live.core.word_com import (
-            find_document,
-            get_word_app,
-            revision_tracking,
-            undo_record,
+        table_count = int(doc.Tables.Count)
+    except Exception as exc:
+        raise RuntimeError(f"Could not enumerate document tables: {exc}") from exc
+
+    if table_count == 0:
+        raise ValueError("Document has no tables")
+
+    if not (1 <= table_index <= table_count):
+        raise ValueError(
+            f"table_index {table_index} out of range. Document has "
+            f"{table_count} table(s) (valid range: 1..{table_count}). "
+            "If a prior delete_table reduced the count, call word_live_get_info to refresh."
         )
 
-        app = get_word_app()
-        doc = find_document(app, filename)
+    table = doc.Tables(table_index)
+    op = operation.lower()
 
-        # Per-call validation: re-read Tables.Count fresh in case a prior
-        # MCP call (especially delete_table) reduced or zeroed the count.
-        try:
-            table_count = doc.Tables.Count
-        except Exception as e:
-            return json.dumps({"error": f"could not enumerate document tables: {e}"})
-
-        if table_count == 0:
-            return json.dumps({"error": "Document has no tables"})
-
-        if not (1 <= table_index <= table_count):
-            return json.dumps(
-                {
-                    "error": (
-                        f"table_index {table_index} out of range. Document has "
-                        f"{table_count} table(s) (valid range: 1..{table_count}). "
-                        f"If a prior delete_table reduced the count, call "
-                        f"word_live_get_info to refresh."
-                    )
-                }
-            )
-
-        table = doc.Tables(table_index)
-        op = operation.lower()
-
-        # get_info is read-only — no undo record needed
-        if op == "get_info":
-            result = table_com.get_info(table)
-            result["document"] = doc.Name
-            result["table_index"] = table_index
-            return json.dumps(result, ensure_ascii=False)
-
-        values = {
-            "row": row,
-            "col": col,
-            "text": text,
-            "before_row": before_row,
-            "before_col": before_col,
-            "header": header,
-            "cells": cells,
-            "start_row": start_row,
-            "start_col": start_col,
-            "end_row": end_row,
-            "end_col": end_col,
-            "autofit_mode": autofit_mode,
-            "accept_revisions": accept_revisions,
-            "scrub_orphans": scrub_orphans,
-        }
-        with undo_record(app, "MCP: Modify Table"):
-            with revision_tracking(app, doc, track_changes, DEFAULT_AUTHOR):
-                result = _execute_table_operation(table_com, table, op, values)
-
-        result["success"] = True
-        result["document"] = doc.Name
+    # get_info is read-only — no undo record needed
+    if op == "get_info":
+        result = table_com.get_info(table)
+        result["document"] = str(doc.Name)
         result["table_index"] = table_index
-        result["operation"] = op
-        result["tracked"] = track_changes
-        return json.dumps(result, ensure_ascii=False)
+        return result
 
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    values = {
+        "row": row,
+        "col": col,
+        "text": text,
+        "before_row": before_row,
+        "before_col": before_col,
+        "header": header,
+        "cells": cells,
+        "start_row": start_row,
+        "start_col": start_col,
+        "end_row": end_row,
+        "end_col": end_col,
+        "autofit_mode": autofit_mode,
+        "accept_revisions": accept_revisions,
+        "scrub_orphans": scrub_orphans,
+    }
+    with word_session.undo_record(app, "MCP: Modify Table"):
+        with word_session.revision_tracking(app, doc, track_changes, DEFAULT_AUTHOR):
+            result = _execute_table_operation(table_com, table, op, values)
+
+    result["success"] = True
+    result["document"] = str(doc.Name)
+    result["table_index"] = table_index
+    result["operation"] = op
+    result["tracked"] = track_changes
+    return result

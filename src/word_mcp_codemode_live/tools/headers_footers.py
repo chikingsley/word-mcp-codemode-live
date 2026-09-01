@@ -1,11 +1,11 @@
 """Inspect and edit native Microsoft Word headers, footers, and page fields."""
 
-import json
 import re
-import sys
 from typing import Any, Literal
 
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
+from word_mcp_codemode_live.word.values import rgb_hex_to_word
 
 StoryKind = Literal["header", "footer"]
 StoryVariant = Literal["primary", "first", "even"]
@@ -35,10 +35,6 @@ _PAGE_STYLE_NAMES = {value: key for key, value in _PAGE_STYLE_IDS.items()}
 _FIELD_IDS = {"page": 33, "pages": 26, "section_pages": 66}
 _FIELD_NAMES = {value: key for key, value in _FIELD_IDS.items()}
 _TEMPLATE_TOKEN = re.compile(r"(\{(?:page|pages|section_pages)\})")
-
-
-def _json_error(message: str) -> str:
-    return json.dumps({"error": message}, ensure_ascii=False)
 
 
 def _section_indices(document: Any, section: int | Literal["all"]) -> list[int]:
@@ -90,8 +86,6 @@ def _rgb_hex(value: Any) -> str | None:
 
 
 def _parse_rgb(value: str) -> int:
-    from word_mcp_codemode_live.core.word_values import rgb_hex_to_word
-
     return rgb_hex_to_word(value, field_name="font_color")
 
 
@@ -245,7 +239,7 @@ def _edit_story(
 async def word_live_get_headers_footers(
     filename: str | None = None,
     section: int | Literal["all"] = "all",
-) -> str:
+) -> dict[str, Any]:
     """Inspect native Word headers, footers, page fields, linkage, and formatting.
 
     Args:
@@ -255,34 +249,24 @@ async def word_live_get_headers_footers(
     Returns:
         JSON for primary, first-page, and even-page headers and footers.
     """
-    if sys.platform != "win32":
-        return _json_error("Live header/footer tools are only available on Windows")
-
-    try:
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app
-
-        document = find_document(get_word_app(), filename)
-        sections: list[dict[str, Any]] = []
-        for index in _section_indices(document, section):
-            word_section = document.Sections(index)
-            section_state: dict[str, Any] = {
-                "section": index,
-                "different_first_page": bool(word_section.PageSetup.DifferentFirstPageHeaderFooter),
-                "different_odd_even": bool(word_section.PageSetup.OddAndEvenPagesHeaderFooter),
-                "headers": {},
-                "footers": {},
-            }
-            for story_kind in _STORY_KINDS:
-                target = section_state[f"{story_kind}s"]
-                for variant in _VARIANTS:
-                    target[variant] = _story_state(_story(word_section, story_kind, variant))
-            sections.append(section_state)
-        return json.dumps(
-            {"success": True, "document": document.Name, "sections": sections},
-            ensure_ascii=False,
-        )
-    except Exception as exc:
-        return _json_error(str(exc))
+    word_session.require_windows("Live header/footer tools")
+    document = word_session.find_document(word_session.get_word_app(), filename)
+    sections: list[dict[str, Any]] = []
+    for index in _section_indices(document, section):
+        word_section = document.Sections(index)
+        section_state: dict[str, Any] = {
+            "section": index,
+            "different_first_page": bool(word_section.PageSetup.DifferentFirstPageHeaderFooter),
+            "different_odd_even": bool(word_section.PageSetup.OddAndEvenPagesHeaderFooter),
+            "headers": {},
+            "footers": {},
+        }
+        for story_kind in _STORY_KINDS:
+            target = section_state[f"{story_kind}s"]
+            for variant in _VARIANTS:
+                target[variant] = _story_state(_story(word_section, story_kind, variant))
+        sections.append(section_state)
+    return {"success": True, "document": str(document.Name), "sections": sections}
 
 
 @word_tool(
@@ -311,7 +295,7 @@ async def word_live_edit_headers_footers(
     page_number_style: PageNumberStyle | None = None,
     restart_page_numbering: bool | None = None,
     start_at: int | None = None,
-) -> str:
+) -> dict[str, Any]:
     """Set or clear one native Word header/footer variant without touching other stories.
 
     ``content`` may contain ``{page}``, ``{pages}``, and ``{section_pages}`` fields.
@@ -343,67 +327,57 @@ async def word_live_edit_headers_footers(
     Returns:
         JSON with the actual post-edit state of each affected story.
     """
-    if sys.platform != "win32":
-        return _json_error("Live header/footer tools are only available on Windows")
+    word_session.require_windows("Live header/footer tools")
     if operation == "set" and not content:
-        return _json_error("content is required for operation='set'; use operation='clear'")
+        raise ValueError("content is required for operation='set'; use operation='clear'")
     if font_size is not None and font_size <= 0:
-        return _json_error("font_size must be greater than zero")
+        raise ValueError("font_size must be greater than zero")
     if start_at is not None and start_at < 0:
-        return _json_error("start_at must be zero or greater")
+        raise ValueError("start_at must be zero or greater")
     if start_at is not None and restart_page_numbering is not True:
-        return _json_error("start_at requires restart_page_numbering=true")
+        raise ValueError("start_at requires restart_page_numbering=true")
 
-    try:
-        rgb_color = _parse_rgb(font_color) if font_color is not None else None
+    rgb_color = _parse_rgb(font_color) if font_color is not None else None
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
+    indices = _section_indices(document, section)
 
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
+    if operation in {"set", "clear"} and link_to_previous is None:
+        linked = _linked_sections(document, indices, story_kind, variant)
+        if linked:
+            raise RuntimeError(
+                "The selected header/footer is linked to the previous section in section(s) "
+                f"{linked}. Set link_to_previous=false to detach it, or true to intentionally "
+                "edit the shared story."
+            )
 
-        app = get_word_app()
-        document = find_document(app, filename)
-        indices = _section_indices(document, section)
+    options = {
+        "alignment": alignment,
+        "font_name": font_name,
+        "font_size": font_size,
+        "bold": bold,
+        "italic": italic,
+        "rgb_color": rgb_color,
+        "link_to_previous": link_to_previous,
+        "different_first_page": different_first_page,
+        "different_odd_even": different_odd_even,
+        "page_number_style": page_number_style,
+        "restart_page_numbering": restart_page_numbering,
+        "start_at": start_at,
+    }
+    with word_session.undo_record(app, "MCP: Edit Headers/Footers"):
+        results = [
+            _edit_story(
+                document, index, story_kind, variant, operation, content, write_mode, options
+            )
+            for index in indices
+        ]
 
-        if operation in {"set", "clear"} and link_to_previous is None:
-            linked = _linked_sections(document, indices, story_kind, variant)
-            if linked:
-                return _json_error(
-                    "The selected header/footer is linked to the previous section in section(s) "
-                    f"{linked}. Set link_to_previous=false to detach it, or true to intentionally "
-                    "edit the shared story."
-                )
-
-        options = {
-            "alignment": alignment,
-            "font_name": font_name,
-            "font_size": font_size,
-            "bold": bold,
-            "italic": italic,
-            "rgb_color": rgb_color,
-            "link_to_previous": link_to_previous,
-            "different_first_page": different_first_page,
-            "different_odd_even": different_odd_even,
-            "page_number_style": page_number_style,
-            "restart_page_numbering": restart_page_numbering,
-            "start_at": start_at,
-        }
-        with undo_record(app, "MCP: Edit Headers/Footers"):
-            results = [
-                _edit_story(
-                    document, index, story_kind, variant, operation, content, write_mode, options
-                )
-                for index in indices
-            ]
-
-        return json.dumps(
-            {
-                "success": True,
-                "document": document.Name,
-                "story_kind": story_kind,
-                "variant": variant,
-                "operation": operation,
-                "results": results,
-            },
-            ensure_ascii=False,
-        )
-    except Exception as exc:
-        return _json_error(str(exc))
+    return {
+        "success": True,
+        "document": str(document.Name),
+        "story_kind": story_kind,
+        "variant": variant,
+        "operation": operation,
+        "results": results,
+    }

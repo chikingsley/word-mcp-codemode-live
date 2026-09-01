@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools import content
+from word_mcp_codemode_live.word import session as word_com
 
 
 class _Range:
@@ -57,7 +57,7 @@ class _Paragraphs:
 async def test_insert_page_break_targets_one_based_paragraph(monkeypatch) -> None:
     document = _Document()
     app = SimpleNamespace(UndoRecord=SimpleNamespace(IsRecordingCustomRecord=True))
-    monkeypatch.setattr(content.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: app)
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
 
@@ -69,7 +69,7 @@ async def test_insert_page_break_targets_one_based_paragraph(monkeypatch) -> Non
 
 @pytest.mark.asyncio
 async def test_insert_page_break_rejects_ambiguous_target(monkeypatch) -> None:
-    monkeypatch.setattr(content.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
 
     with pytest.raises(ValueError, match="not both"):
         await content.word_live_insert_page_break(paragraph_index=1, character_offset=0)

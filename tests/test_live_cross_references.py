@@ -4,12 +4,11 @@ from typing import Any
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
-from word_mcp_codemode_live.tools import cross_references
 from word_mcp_codemode_live.tools.cross_references import (
     word_live_insert_cross_reference,
     word_live_list_cross_reference_targets,
 )
+from word_mcp_codemode_live.word import session as word_com
 
 
 class _Range:
@@ -68,7 +67,7 @@ class _Document:
 def fake_word(monkeypatch: pytest.MonkeyPatch) -> tuple[_Document, list[str]]:
     document = _Document()
     undo_names: list[str] = []
-    monkeypatch.setattr(cross_references.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
 

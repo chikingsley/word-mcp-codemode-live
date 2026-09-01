@@ -1,19 +1,86 @@
 """Inspect and edit comments in live Word documents."""
 
-import json
 import logging
-import sys
-from typing import Any
+from typing import Annotated, Any, Literal
+
+from pydantic import BaseModel, Field
 
 from word_mcp_codemode_live.defaults import DEFAULT_AUTHOR
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
+from word_mcp_codemode_live.word.ranges import character_or_paragraph_range
 
 logger = logging.getLogger(__name__)
 
+PositiveIndex = Annotated[int, Field(ge=1)]
+CharacterOffset = Annotated[int, Field(ge=0)]
+NonEmptyText = Annotated[str, Field(min_length=1)]
 
-def _require_windows() -> None:
-    if sys.platform != "win32":
-        raise RuntimeError("Live comment tools are only available on Windows")
+
+class CommentReply(BaseModel):
+    index: int
+    document_index: int
+    author: str
+    date: str
+    text: str
+
+
+class CommentInfo(BaseModel):
+    index: int
+    document_index: int
+    author: str
+    date: str
+    text: str
+    scope: str
+    resolved: bool | None
+    replies: list[CommentReply] = Field(default_factory=list)
+    reply_count: int = 0
+
+
+class CommentListResult(BaseModel):
+    success: Literal[True] = True
+    document: str
+    comment_count: int
+    raw_comment_count: int
+    comments: list[CommentInfo]
+
+
+class CommentStatusResult(BaseModel):
+    success: Literal[True] = True
+    document: str
+    comment_index: int
+    previous_resolved: bool
+    resolved: bool
+    changed: bool
+
+
+class CommentAddedResult(BaseModel):
+    success: Literal[True] = True
+    document: str
+    comment_index: int
+    document_index: int
+    author: str
+    text: str
+
+
+class CommentReplyResult(BaseModel):
+    success: Literal[True] = True
+    document: str
+    comment_index: int
+    reply_text: str
+    reply_index: int
+    reply_document_index: int
+    author: str
+
+
+class CommentDeletedResult(BaseModel):
+    success: Literal[True] = True
+    document: str
+    deleted_comment_index: int
+    deleted_comment_text: str
+    deleted_replies: int
+    remaining_comments: int
+    remaining_raw_comments: int
 
 
 def _top_level_comment_rows(document: Any) -> list[tuple[int, Any]]:
@@ -48,83 +115,66 @@ def _resolved_state(comment: Any) -> bool:
         ) from exc
 
 
-@word_tool(title="Word Live Get Comments", domain="comments", change="read")
-async def word_live_get_comments(filename: str | None = None) -> str:
-    """Get all comments from an open Word document.
-
-    Args:
-        filename: Document name or path (None = active document).
-
-    Returns:
-        JSON with list of comments (author, date, text, scope).
-    """
-
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live tools are only available on Windows"})
-
+def _comment_reply_rows(comment: Any) -> list[CommentReply]:
+    replies: list[CommentReply] = []
     try:
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app
+        count = int(comment.Replies.Count)
+    except Exception as exc:
+        logger.debug("Comment replies are unavailable in this Word version: %s", exc)
+        return replies
+    for reply_index in range(1, count + 1):
+        reply = comment.Replies(reply_index)
+        replies.append(
+            CommentReply(
+                index=reply_index,
+                document_index=int(reply.Index),
+                author=str(reply.Author) if reply.Author else "",
+                date=str(reply.Date) if reply.Date else "",
+                text=str(reply.Range.Text) if reply.Range and reply.Range.Text else "",
+            )
+        )
+    return replies
 
-        app = get_word_app()
-        doc = find_document(app, filename)
 
-        comments = []
-        for thread_index, (document_index, c) in enumerate(_top_level_comment_rows(doc), 1):
-            scope_text = ""
-            try:
-                scope_text = c.Scope.Text[:100] if c.Scope and c.Scope.Text else ""
-            except Exception as exc:
-                logger.debug("Comment scope is unavailable: %s", exc)
+@word_tool(title="Word Live Get Comments", domain="comments", change="read")
+async def word_live_get_comments(filename: str | None = None) -> CommentListResult:
+    """Get all top-level comment threads and their replies from an open document."""
+    word_session.require_windows("Live comment tools")
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
 
-            # Collect replies (Word 2016+)
-            replies = []
-            try:
-                for r_idx in range(1, c.Replies.Count + 1):
-                    r = c.Replies(r_idx)
-                    replies.append(
-                        {
-                            "index": r_idx,
-                            "document_index": int(r.Index),
-                            "author": str(r.Author) if r.Author else "",
-                            "date": str(r.Date) if r.Date else "",
-                            "text": str(r.Range.Text) if r.Range and r.Range.Text else "",
-                        }
-                    )
-            except Exception as exc:
-                logger.debug("Comment replies are unavailable in this Word version: %s", exc)
-
-            comment_data = {
-                "index": thread_index,
-                "document_index": document_index,
-                "author": str(c.Author) if c.Author else "",
-                "date": str(c.Date) if c.Date else "",
-                "text": str(c.Range.Text) if c.Range and c.Range.Text else "",
-                "scope": scope_text,
-            }
-            try:
-                comment_data["resolved"] = _resolved_state(c)
-            except RuntimeError:
-                # Older Word object models can still expose comments without Done.
-                # Keep comment inspection useful while making the missing state explicit.
-                comment_data["resolved"] = None
-            if replies:
-                comment_data["replies"] = replies
-                comment_data["reply_count"] = len(replies)
-            comments.append(comment_data)
-
-        return json.dumps(
-            {
-                "success": True,
-                "document": doc.Name,
-                "comment_count": len(comments),
-                "raw_comment_count": int(doc.Comments.Count),
-                "comments": comments,
-            },
-            ensure_ascii=False,
+    comments: list[CommentInfo] = []
+    for thread_index, (document_index, comment) in enumerate(_top_level_comment_rows(document), 1):
+        try:
+            scope = comment.Scope.Text[:100] if comment.Scope and comment.Scope.Text else ""
+        except Exception as exc:
+            logger.debug("Comment scope is unavailable: %s", exc)
+            scope = ""
+        try:
+            resolved = _resolved_state(comment)
+        except RuntimeError:
+            resolved = None
+        replies = _comment_reply_rows(comment)
+        comments.append(
+            CommentInfo(
+                index=thread_index,
+                document_index=document_index,
+                author=str(comment.Author) if comment.Author else "",
+                date=str(comment.Date) if comment.Date else "",
+                text=(str(comment.Range.Text) if comment.Range and comment.Range.Text else ""),
+                scope=scope,
+                resolved=resolved,
+                replies=replies,
+                reply_count=len(replies),
+            )
         )
 
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    return CommentListResult(
+        document=str(document.Name),
+        comment_count=len(comments),
+        raw_comment_count=int(document.Comments.Count),
+        comments=comments,
+    )
 
 
 @word_tool(
@@ -135,38 +185,19 @@ async def word_live_get_comments(filename: str | None = None) -> str:
 )
 async def word_live_set_comment_status(
     filename: str | None = None,
-    comment_index: int = 1,
+    comment_index: PositiveIndex = 1,
     resolved: bool = True,
-) -> dict[str, Any]:
-    """Resolve or reopen one top-level comment thread using Word's native status.
-
-    The comment index is one-based and comes from ``word_live_get_comments``.
-    ``resolved=True`` marks the thread resolved; ``resolved=False`` reopens it.
-    This intentionally targets the top-level thread. Microsoft documents that
-    setting ``Comment.Done`` on an individual reply has no visible effect in the
-    redesigned comments experience.
-
-    Args:
-        filename: Open document name or full path (None selects the active document).
-        comment_index: One-based top-level comment index.
-        resolved: True to resolve the thread, or False to reopen it.
-    """
-    _require_windows()
-
-    from word_mcp_codemode_live.core.word_com import (
-        find_document,
-        get_word_app,
-        undo_transaction,
-    )
-
-    app = get_word_app()
-    document = find_document(app, filename)
+) -> CommentStatusResult:
+    """Resolve or reopen one top-level comment thread using Word's native status."""
+    word_session.require_windows("Live comment tools")
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     comment = _get_comment(document, comment_index)
     previous_resolved = _resolved_state(comment)
     requested_resolved = bool(resolved)
 
     if previous_resolved != requested_resolved:
-        with undo_transaction(
+        with word_session.undo_transaction(
             app,
             document,
             "MCP: Resolve Comment" if requested_resolved else "MCP: Reopen Comment",
@@ -180,232 +211,131 @@ async def word_live_set_comment_status(
                 ) from exc
             current_resolved = _resolved_state(comment)
             if current_resolved != requested_resolved:
-                raise RuntimeError(
-                    "Word did not apply the requested comment status; the thread state "
-                    "was left unchanged"
-                )
+                raise RuntimeError("Word did not apply the requested comment status")
     else:
         current_resolved = previous_resolved
 
-    return {
-        "success": True,
-        "document": str(document.Name),
-        "comment_index": comment_index,
-        "previous_resolved": previous_resolved,
-        "resolved": current_resolved,
-        "changed": previous_resolved != current_resolved,
-    }
+    return CommentStatusResult(
+        document=str(document.Name),
+        comment_index=comment_index,
+        previous_resolved=previous_resolved,
+        resolved=current_resolved,
+        changed=previous_resolved != current_resolved,
+    )
 
 
 @word_tool(title="Word Live Add Comment", domain="comments", change="edit", batchable=True)
 async def word_live_add_comment(
     filename: str | None = None,
-    start: int | None = None,
-    end: int | None = None,
-    paragraph_index: int | None = None,
-    text: str = "",
+    start: CharacterOffset | None = None,
+    end: CharacterOffset | None = None,
+    paragraph_index: PositiveIndex | None = None,
+    text: NonEmptyText = "",
     author: str = DEFAULT_AUTHOR,
-) -> str:
-    """Add a comment to an open Word document.
-
-    Specify either start/end character positions or paragraph_index.
-    If paragraph_index is given, the comment is attached to the entire paragraph.
-
-    Args:
-        filename: Document name or path (None = active document).
-        start: Start character position.
-        end: End character position.
-        paragraph_index: 1-indexed paragraph to attach comment to.
-        text: Comment text.
-        author: Comment author name.
-
-    Returns:
-        JSON with result info.
-    """
-
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live tools are only available on Windows"})
-
+) -> CommentAddedResult:
+    """Attach a comment to a character range or one complete paragraph."""
+    word_session.require_windows("Live comment tools")
     if not text:
-        return json.dumps({"error": "Comment text is required"})
+        raise ValueError("Comment text is required")
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
+    target = character_or_paragraph_range(
+        document,
+        start=start,
+        end=end,
+        start_paragraph=paragraph_index,
+        end_paragraph=None,
+    )
 
-    try:
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
+    with word_session.undo_record(app, "MCP: Add Comment"):
+        previous_author = app.UserName
+        app.UserName = author
+        try:
+            comment = document.Comments.Add(target.com_range, text)
+        finally:
+            app.UserName = previous_author
 
-        app = get_word_app()
-        doc = find_document(app, filename)
-
-        # Determine the range to attach the comment to
-        if paragraph_index is not None:
-            if paragraph_index < 1 or paragraph_index > doc.Paragraphs.Count:
-                return json.dumps(
-                    {
-                        "error": f"paragraph_index {paragraph_index} out of range (1-{doc.Paragraphs.Count})"
-                    }
-                )
-            rng = doc.Paragraphs(paragraph_index).Range
-        elif start is not None and end is not None:
-            rng = doc.Range(start, end)
-        else:
-            return json.dumps({"error": "Provide either start/end positions or paragraph_index"})
-
-        with undo_record(app, "MCP: Add Comment"):
-            # Save and restore author
-            prev_author = app.UserName
-            app.UserName = author
-            try:
-                comment = doc.Comments.Add(rng, text)
-            finally:
-                app.UserName = prev_author
-
-        return json.dumps(
-            {
-                "success": True,
-                "document": doc.Name,
-                "comment_index": len(_top_level_comment_rows(doc)),
-                "document_index": int(comment.Index),
-                "author": author,
-                "text": text[:100],
-            },
-            ensure_ascii=False,
-        )
-
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    return CommentAddedResult(
+        document=str(document.Name),
+        comment_index=len(_top_level_comment_rows(document)),
+        document_index=int(comment.Index),
+        author=author,
+        text=text[:100],
+    )
 
 
 @word_tool(title="Word Live Reply to Comment", domain="comments", change="edit", batchable=True)
 async def word_live_reply_to_comment(
     filename: str | None = None,
-    comment_index: int | None = None,
-    text: str = "",
+    comment_index: PositiveIndex | None = None,
+    text: NonEmptyText = "",
     author: str = DEFAULT_AUTHOR,
-) -> str:
-    """Reply to an existing comment in an open Word document.
-
-    Adds a threaded reply to a top-level comment. Requires Word 2016 or later.
-    Use word_live_get_comments to find the comment_index.
-
-    Args:
-        filename: Document name or path (None = active document).
-        comment_index: 1-indexed comment to reply to.
-        text: Reply text.
-        author: Reply author name.
-
-    Returns:
-        JSON with reply info.
-    """
-
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live tools are only available on Windows"})
-
+) -> CommentReplyResult:
+    """Add a threaded reply to a top-level comment."""
+    word_session.require_windows("Live comment tools")
     if comment_index is None:
-        return json.dumps({"error": "comment_index is required"})
+        raise ValueError("comment_index is required")
     if not text:
-        return json.dumps({"error": "Reply text is required"})
+        raise ValueError("Reply text is required")
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
+    comment = _get_comment(document, comment_index)
 
-    try:
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
-
-        app = get_word_app()
-        doc = find_document(app, filename)
-
+    with word_session.undo_record(app, "MCP: Reply to Comment"):
+        previous_author = app.UserName
+        app.UserName = author
         try:
-            comment = _get_comment(doc, comment_index)
-        except ValueError as exc:
-            return json.dumps({"error": str(exc)})
-
-        with undo_record(app, "MCP: Reply to Comment"):
-            prev_author = app.UserName
-            app.UserName = author
             try:
                 reply = comment.Replies.Add(comment.Scope, text)
-            except AttributeError:
-                return json.dumps({"error": "Comment replies require Word 2016 or later."})
-            finally:
-                app.UserName = prev_author
+            except AttributeError as exc:
+                raise RuntimeError("Comment replies require Word 2016 or later") from exc
+        finally:
+            app.UserName = previous_author
 
-        return json.dumps(
-            {
-                "success": True,
-                "document": doc.Name,
-                "comment_index": comment_index,
-                "reply_text": text[:100],
-                "reply_index": int(comment.Replies.Count),
-                "reply_document_index": int(reply.Index),
-                "author": author,
-            },
-            ensure_ascii=False,
-        )
-
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    return CommentReplyResult(
+        document=str(document.Name),
+        comment_index=comment_index,
+        reply_text=text[:100],
+        reply_index=int(comment.Replies.Count),
+        reply_document_index=int(reply.Index),
+        author=author,
+    )
 
 
 @word_tool(title="Word Live Delete Comment", domain="comments", change="edit", batchable=True)
 async def word_live_delete_comment(
     filename: str | None = None,
-    comment_index: int | None = None,
+    comment_index: PositiveIndex | None = None,
     delete_replies: bool = True,
-) -> str:
-    """Delete a comment from an open Word document.
-
-    Args:
-        filename: Document name or path (None = active document).
-        comment_index: 1-indexed comment to delete.
-        delete_replies: Delete the entire reply thread when replies exist.
-
-    Returns:
-        JSON with result info.
-    """
-
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live tools are only available on Windows"})
-
+) -> CommentDeletedResult:
+    """Delete one top-level comment, optionally including its reply thread."""
+    word_session.require_windows("Live comment tools")
     if comment_index is None:
-        return json.dumps({"error": "comment_index is required"})
-
+        raise ValueError("comment_index is required")
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
+    comment = _get_comment(document, comment_index)
+    comment_text = str(comment.Range.Text)[:100] if comment.Range else ""
     try:
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
-
-        app = get_word_app()
-        doc = find_document(app, filename)
-
-        try:
-            comment = _get_comment(doc, comment_index)
-        except ValueError as exc:
-            return json.dumps({"error": str(exc)})
-        comment_text = str(comment.Range.Text)[:100] if comment.Range else ""
-        try:
-            reply_count = int(comment.Replies.Count)
-        except Exception:
-            reply_count = 0
-        if reply_count and not delete_replies:
-            return json.dumps(
-                {
-                    "error": f"Comment has {reply_count} replies; set delete_replies=true "
-                    "to delete the whole thread"
-                }
-            )
-
-        with undo_record(app, "MCP: Delete Comment"):
-            if reply_count:
-                comment.DeleteRecursively()
-            else:
-                comment.Delete()
-
-        return json.dumps(
-            {
-                "success": True,
-                "document": doc.Name,
-                "deleted_comment_index": comment_index,
-                "deleted_comment_text": comment_text,
-                "deleted_replies": reply_count,
-                "remaining_comments": len(_top_level_comment_rows(doc)),
-                "remaining_raw_comments": int(doc.Comments.Count),
-            },
-            ensure_ascii=False,
+        reply_count = int(comment.Replies.Count)
+    except Exception:
+        reply_count = 0
+    if reply_count and not delete_replies:
+        raise RuntimeError(
+            f"Comment has {reply_count} replies; set delete_replies=true to delete the whole thread"
         )
 
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    with word_session.undo_record(app, "MCP: Delete Comment"):
+        if reply_count:
+            comment.DeleteRecursively()
+        else:
+            comment.Delete()
+
+    return CommentDeletedResult(
+        document=str(document.Name),
+        deleted_comment_index=comment_index,
+        deleted_comment_text=comment_text,
+        deleted_replies=reply_count,
+        remaining_comments=len(_top_level_comment_rows(document)),
+        remaining_raw_comments=int(document.Comments.Count),
+    )

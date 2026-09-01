@@ -1,7 +1,6 @@
 """Insert complete files into live Word documents with native Word semantics."""
 
 import os
-import sys
 from collections import Counter
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -9,11 +8,7 @@ from typing import Annotated, Any, Literal
 from pydantic import Field
 
 from word_mcp_codemode_live.tools.metadata import word_tool
-
-
-def _require_windows() -> None:
-    if sys.platform != "win32":
-        raise RuntimeError("Live editing is only available on Windows")
+from word_mcp_codemode_live.word import session as word_session
 
 
 def _resolve_source_path(source_path: str) -> Path:
@@ -203,19 +198,13 @@ async def word_live_insert_file(
         target_end: End of an explicit destination range, exclusive.
         source_bookmark: Optional bookmark/range name inside the source file.
     """
-    _require_windows()
+    word_session.require_windows("Live Word editing")
     source = _resolve_source_path(source_path)
     if source_bookmark is not None and not source_bookmark.strip():
         raise ValueError("source_bookmark cannot be empty or whitespace")
 
-    from word_mcp_codemode_live.core.word_com import (
-        find_document,
-        get_word_app,
-        undo_transaction,
-    )
-
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     destination_path = Path(str(document.FullName)).resolve(strict=False)
     try:
         same_file = os.path.samefile(source, destination_path)
@@ -237,7 +226,7 @@ async def word_live_insert_file(
     before_text = str(document.Content.Text)
     saved_before = bool(document.Saved)
 
-    with undo_transaction(
+    with word_session.undo_transaction(
         app,
         document,
         "MCP: Insert File",

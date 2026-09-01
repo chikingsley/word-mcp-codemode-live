@@ -1,11 +1,14 @@
 """Inspect and edit formatting in live Word documents."""
 
-import json
-import sys
-from typing import Any
+from typing import Annotated, Any, Literal
+
+from pydantic import BaseModel, Field
 
 from word_mcp_codemode_live.defaults import DEFAULT_AUTHOR
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
+from word_mcp_codemode_live.word.ranges import character_or_paragraph_range
+from word_mcp_codemode_live.word.values import rgb_hex_to_word
 
 _ALIGNMENTS = {"left": 0, "center": 1, "right": 2, "justify": 3}
 _ALIGNMENT_NAMES = {0: "left", 1: "center", 2: "right", 3: "justify", 4: "distribute"}
@@ -17,6 +20,24 @@ _SPACING_RULE_NAMES = {
     4: "exactly",
     5: "multiple",
 }
+
+
+class ParagraphFormatResult(BaseModel):
+    """Structured result for paragraph-format inspection."""
+
+    success: Literal[True] = True
+    document: str
+    paragraphs: list[dict[str, Any]]
+
+
+class FormatTextResult(BaseModel):
+    """Structured result for a formatting edit."""
+
+    success: Literal[True] = True
+    document: str
+    range: str
+    text_preview: str
+    tracked: bool
 
 
 def _word_runs(word_range: Any) -> list[dict[str, Any]]:
@@ -119,21 +140,14 @@ def _format_range(
     start_paragraph: int | None,
     end_paragraph: int | None,
 ) -> tuple[Any, str]:
-    if start_paragraph is not None:
-        final_paragraph = end_paragraph or start_paragraph
-        if start_paragraph < 1 or final_paragraph > document.Paragraphs.Count:
-            raise ValueError(
-                f"Paragraph range {start_paragraph}-{final_paragraph} out of bounds "
-                f"(doc has {document.Paragraphs.Count} paragraphs)"
-            )
-        start_position = document.Paragraphs(start_paragraph).Range.Start
-        end_position = document.Paragraphs(final_paragraph).Range.End
-        return document.Range(
-            start_position, end_position
-        ), f"para {start_paragraph}-{final_paragraph}"
-    if start is not None and end is not None:
-        return document.Range(start, end), f"{start}-{end}"
-    raise ValueError("Provide start/end character positions OR start_paragraph/end_paragraph")
+    resolved = character_or_paragraph_range(
+        document,
+        start=start,
+        end=end,
+        start_paragraph=start_paragraph,
+        end_paragraph=end_paragraph,
+    )
+    return resolved.com_range, resolved.label
 
 
 def _validate_format_options(
@@ -151,8 +165,6 @@ def _validate_format_options(
             alignment = _ALIGNMENTS[paragraph_alignment.casefold()]
         except KeyError as exc:
             raise ValueError(f"Invalid alignment: {paragraph_alignment}") from exc
-    from word_mcp_codemode_live.core.word_values import rgb_hex_to_word
-
     color = rgb_hex_to_word(font_color, field_name="font_color") if font_color else None
     if font_size is not None and font_size <= 0:
         raise ValueError("font_size must be greater than zero")
@@ -249,10 +261,10 @@ def _apply_paragraph_format(word_range: Any, options: dict[str, Any]) -> None:
 @word_tool(title="Word Live Get Paragraph Format", domain="formatting", change="read")
 async def word_live_get_paragraph_format(
     filename: str | None = None,
-    start_paragraph: int | None = None,
-    end_paragraph: int | None = None,
+    start_paragraph: Annotated[int, Field(ge=1)] | None = None,
+    end_paragraph: Annotated[int, Field(ge=1)] | None = None,
     include_runs: bool = False,
-) -> str:
+) -> ParagraphFormatResult:
     """[Windows only] Inspect paragraph formatting properties for diagnostics.
 
     Returns detailed formatting info for each paragraph in the range. Essential for
@@ -277,71 +289,52 @@ async def word_live_get_paragraph_format(
         include_runs: Include per-run (word-level) formatting detail (default False).
 
     Returns:
-        JSON with formatting details per paragraph.
+        Structured formatting details per paragraph.
     """
-
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live tools are only available on Windows"})
+    word_session.require_windows("Live formatting tools")
 
     if start_paragraph is None:
-        return json.dumps({"error": "start_paragraph is required (1-indexed)"})
+        raise ValueError("start_paragraph is required (1-indexed)")
 
     if end_paragraph is None:
         end_paragraph = start_paragraph
 
-    try:
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app
-
-        app = get_word_app()
-        doc = find_document(app, filename)
-
-        total_paras = doc.Paragraphs.Count
-        if start_paragraph < 1 or end_paragraph > total_paras:
-            return json.dumps(
-                {
-                    "error": f"Range {start_paragraph}-{end_paragraph} out of bounds (doc has {total_paras} paragraphs)"
-                }
-            )
-
-        results = [
-            _paragraph_format_info(doc.Paragraphs(index), index, include_runs)
-            for index in range(start_paragraph, end_paragraph + 1)
-        ]
-
-        return json.dumps(
-            {
-                "success": True,
-                "document": doc.Name,
-                "paragraphs": results,
-            },
-            ensure_ascii=False,
+    document = word_session.find_document(word_session.get_word_app(), filename)
+    total_paragraphs = int(document.Paragraphs.Count)
+    if end_paragraph > total_paragraphs:
+        raise ValueError(
+            f"Range {start_paragraph}-{end_paragraph} out of bounds "
+            f"(document has {total_paragraphs} paragraphs)"
         )
 
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    paragraphs = [
+        _paragraph_format_info(document.Paragraphs(index), index, include_runs)
+        for index in range(start_paragraph, end_paragraph + 1)
+    ]
+    return ParagraphFormatResult(document=str(document.Name), paragraphs=paragraphs)
 
 
 @word_tool(title="Word Live Format Text", domain="formatting", change="edit", batchable=True)
 async def word_live_format_text(
     filename: str | None = None,
-    start: int | None = None,
-    end: int | None = None,
-    start_paragraph: int | None = None,
-    end_paragraph: int | None = None,
+    start: Annotated[int, Field(ge=0)] | None = None,
+    end: Annotated[int, Field(ge=0)] | None = None,
+    start_paragraph: Annotated[int, Field(ge=1)] | None = None,
+    end_paragraph: Annotated[int, Field(ge=1)] | None = None,
     bold: bool | None = None,
     italic: bool | None = None,
     underline: bool | None = None,
     strikethrough: bool | None = None,
     font_name: str | None = None,
-    font_size: float | None = None,
-    font_color: str | None = None,
-    highlight_color: int | None = None,
+    font_size: Annotated[float, Field(gt=0)] | None = None,
+    font_color: Annotated[str, Field(pattern=r"^#?[0-9A-Fa-f]{6}$")] | None = None,
+    highlight_color: Annotated[int, Field(ge=0, le=16)] | None = None,
     style_name: str | None = None,
-    paragraph_alignment: str | None = None,
+    paragraph_alignment: Literal["left", "center", "right", "justify"] | None = None,
     page_break_before: bool | None = None,
     preserve_direct_formatting: bool = False,
     track_changes: bool = False,
-) -> str:
+) -> FormatTextResult:
     """[Windows only] Format text in an open Word document: font, color, highlight, style, alignment, page breaks.
     Use this tool for any visual/formatting change that does NOT alter the text content itself.
 
@@ -378,64 +371,48 @@ async def word_live_format_text(
         track_changes: Track formatting changes as revisions.
 
     Returns:
-        JSON with result info.
+        Structured information about the formatted range.
     """
+    word_session.require_windows("Live formatting tools")
 
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live editing is only available on Windows"})
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
+    word_range, range_label = _format_range(document, start, end, start_paragraph, end_paragraph)
+    alignment_value, rgb_color = _validate_format_options(
+        document,
+        paragraph_alignment=paragraph_alignment,
+        font_color=font_color,
+        font_size=font_size,
+        highlight_color=highlight_color,
+        style_name=style_name,
+    )
+    options = {
+        "document": document,
+        "bold": bold,
+        "italic": italic,
+        "underline": underline,
+        "strikethrough": strikethrough,
+        "font_name": font_name,
+        "font_size": font_size,
+        "font_color_value": rgb_color,
+        "highlight_color": highlight_color,
+        "style_name": style_name,
+        "alignment_value": alignment_value,
+        "page_break_before": page_break_before,
+        "preserve_direct_formatting": preserve_direct_formatting,
+    }
 
-    try:
-        from word_mcp_codemode_live.core.word_com import (
-            find_document,
-            get_word_app,
-            revision_tracking,
-            undo_record,
-        )
+    with word_session.undo_record(app, "MCP: Format Text"):
+        with word_session.revision_tracking(app, document, track_changes, DEFAULT_AUTHOR):
+            _apply_text_format(word_range, options)
 
-        app = get_word_app()
-        doc = find_document(app, filename)
-        rng, range_label = _format_range(doc, start, end, start_paragraph, end_paragraph)
-        alignment_value, rgb_color = _validate_format_options(
-            doc,
-            paragraph_alignment=paragraph_alignment,
-            font_color=font_color,
-            font_size=font_size,
-            highlight_color=highlight_color,
-            style_name=style_name,
-        )
-        options = {
-            "document": doc,
-            "bold": bold,
-            "italic": italic,
-            "underline": underline,
-            "strikethrough": strikethrough,
-            "font_name": font_name,
-            "font_size": font_size,
-            "font_color_value": rgb_color,
-            "highlight_color": highlight_color,
-            "style_name": style_name,
-            "alignment_value": alignment_value,
-            "page_break_before": page_break_before,
-            "preserve_direct_formatting": preserve_direct_formatting,
-        }
+    preview = str(word_range.Text)
+    if len(preview) > 50:
+        preview = preview[:50] + "..."
 
-        with undo_record(app, "MCP: Format Text"):
-            with revision_tracking(app, doc, track_changes, DEFAULT_AUTHOR):
-                _apply_text_format(rng, options)
-
-        preview = rng.Text
-        if len(preview) > 50:
-            preview = preview[:50] + "..."
-
-        return json.dumps(
-            {
-                "success": True,
-                "document": doc.Name,
-                "range": range_label,
-                "text_preview": preview,
-                "tracked": track_changes,
-            }
-        )
-
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    return FormatTextResult(
+        document=str(document.Name),
+        range=range_label,
+        text_preview=preview,
+        tracked=track_changes,
+    )

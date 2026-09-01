@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pymupdf
 
-from word_mcp_codemode_live.tools.capture import render_word_pages
+from word_mcp_codemode_live.word.rendering import render_word_pages
 
 
 class _Selection:

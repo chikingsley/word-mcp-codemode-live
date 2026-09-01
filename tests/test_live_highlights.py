@@ -3,8 +3,8 @@ from typing import Any
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools import highlights as live_highlights
+from word_mcp_codemode_live.word import session as word_com
 
 
 class FakeSearchRange:
@@ -85,7 +85,7 @@ def fake_document(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
             }
         ),
     )
-    monkeypatch.setattr(live_highlights.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
     return document

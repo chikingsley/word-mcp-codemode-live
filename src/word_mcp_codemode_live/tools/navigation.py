@@ -1,11 +1,11 @@
 """Navigate Word's UI selection without changing document content."""
 
-import sys
 from typing import Annotated, Any
 
 from pydantic import Field
 
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
 
 _WD_ACTIVE_END_PAGE_NUMBER = 3
 _WD_GO_TO_PAGE = 1
@@ -13,11 +13,6 @@ _WD_GO_TO_ABSOLUTE = 1
 _WD_NUMBER_OF_PAGES_IN_DOCUMENT = 4
 _WD_COLLAPSE_END = 0
 _WD_COLLAPSE_START = 1
-
-
-def _require_windows() -> None:
-    if sys.platform != "win32":
-        raise RuntimeError("Live navigation tools are only available on Windows")
 
 
 def _page_at(word_range: Any, collapse: int) -> int:
@@ -63,7 +58,7 @@ async def word_live_navigate(
     into view; in a hidden automation instance it updates the same selection and
     reports that no visible UI was shown.
     """
-    _require_windows()
+    word_session.require_windows("Live navigation tools")
     page_mode = page is not None
     range_mode = char_start is not None or char_end is not None
     if page_mode == range_mode:
@@ -73,10 +68,8 @@ async def word_live_navigate(
     if range_mode and char_start is None:
         raise ValueError("char_start is required when char_end is provided")
 
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app
-
-    application = get_word_app()
-    document = find_document(application, filename)
+    application = word_session.get_word_app()
+    document = word_session.find_document(application, filename)
     content_end = int(document.Content.End)
     saved_before = bool(document.Saved)
 

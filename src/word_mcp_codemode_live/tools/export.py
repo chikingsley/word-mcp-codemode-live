@@ -3,12 +3,13 @@
 import os
 import sys
 
-from word_mcp_codemode_live.tools.metadata import word_tool
-from word_mcp_codemode_live.utils.file_utils import (
+from word_mcp_codemode_live.filesystem import (
     check_file_writeable,
     ensure_docx_extension,
     get_file_lock,
 )
+from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
 
 
 @word_tool(title="Convert Word to PDF", domain="export", change="edit")
@@ -45,13 +46,11 @@ async def convert_to_pdf(filename: str, output_filename: str | None = None) -> s
 
     try:
         async with get_file_lock(filename):
-            from word_mcp_codemode_live.core.word_com import find_document, get_word_app
-
             document = None
             dedicated_app = None
             try:
                 try:
-                    document = find_document(get_word_app(), filename)
+                    document = word_session.find_document(word_session.get_word_app(), filename)
                 except (RuntimeError, ValueError):
                     import win32com.client
 

@@ -1,11 +1,10 @@
-import json
 from contextlib import nullcontext
 from types import SimpleNamespace
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools.comments import word_live_delete_comment
+from word_mcp_codemode_live.word import session as word_com
 
 
 class _Comment:
@@ -39,8 +38,8 @@ async def test_delete_comment_removes_threaded_replies(monkeypatch) -> None:
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
     monkeypatch.setattr(word_com, "undo_record", lambda _app, _name: nullcontext())
 
-    result = json.loads(await word_live_delete_comment("comments.docx", 1))
+    result = await word_live_delete_comment("comments.docx", 1)
 
-    assert result["success"] is True
-    assert result["deleted_replies"] == 2
+    assert result.success is True
+    assert result.deleted_replies == 2
     assert comment.recursively_deleted is True

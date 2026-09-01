@@ -3,8 +3,8 @@ from typing import Any, cast
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools import toc as live_toc
+from word_mcp_codemode_live.word import session as word_com
 
 
 class FakeCode:
@@ -110,7 +110,7 @@ def fake_undo_record(_app: Any, _name: str):  # type: ignore[no-untyped-def]
 @pytest.fixture
 def fake_document(monkeypatch: pytest.MonkeyPatch) -> FakeDocument:
     document = FakeDocument()
-    monkeypatch.setattr(live_toc.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
     monkeypatch.setattr(word_com, "undo_record", fake_undo_record)

@@ -1,26 +1,19 @@
 """Persist and compare semantic snapshots of open Microsoft Word documents."""
 
 import hashlib
-import json
 import logging
 import ntpath
-import os
-import sys
-import tempfile
 from contextvars import ContextVar
-from difflib import SequenceMatcher
-from pathlib import Path
 from typing import Annotated, Any
 
 from pydantic import Field
 
+from word_mcp_codemode_live import snapshot_format
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
 
 logger = logging.getLogger(__name__)
 
-_SCHEMA = "word-mcp-live.document-snapshot"
-_VERSION = 1
-_MAX_SNAPSHOT_BYTES = 50 * 1024 * 1024
 _CAPTURE_WARNINGS: ContextVar[set[str] | None] = ContextVar(
     "word_snapshot_capture_warnings", default=None
 )
@@ -33,20 +26,6 @@ _HEADER_FOOTER_STORY_TYPES = {
     10: ("header", "first"),
     11: ("footer", "first"),
 }
-_OFFSET_KEYS = {
-    "start_offset",
-    "end_offset",
-    "reference_offset",
-    "code_start_offset",
-    "code_end_offset",
-    "result_start_offset",
-    "result_end_offset",
-}
-
-
-def _require_windows() -> None:
-    if sys.platform != "win32":
-        raise RuntimeError("Live snapshot capture is only available on Windows")
 
 
 def _clean_text(value: Any) -> str:
@@ -313,21 +292,6 @@ def _revisions(document: Any) -> list[dict[str, Any]]:
     return records
 
 
-def _canonical_bytes(value: Any) -> bytes:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
-
-
-def _content_hash(content: dict[str, Any]) -> str:
-    return hashlib.sha256(_canonical_bytes(content)).hexdigest()
-
-
-def _envelope_hash(snapshot: dict[str, Any]) -> str:
-    envelope = {key: value for key, value in snapshot.items() if key != "envelope_sha256"}
-    return hashlib.sha256(_canonical_bytes(envelope)).hexdigest()
-
-
 def _capture(document: Any) -> dict[str, Any]:
     capture_warnings: set[str] = set()
     token = _CAPTURE_WARNINGS.set(capture_warnings)
@@ -347,8 +311,8 @@ def _capture(document: Any) -> dict[str, Any]:
         _CAPTURE_WARNINGS.reset(token)
     source_full_path = str(document.FullName)
     snapshot = {
-        "schema": _SCHEMA,
-        "version": _VERSION,
+        "schema": snapshot_format.SCHEMA,
+        "version": snapshot_format.VERSION,
         "source": {
             "name": str(document.Name),
             "full_path": source_full_path,
@@ -356,7 +320,7 @@ def _capture(document: Any) -> dict[str, Any]:
                 ntpath.normcase(source_full_path).encode("utf-8")
             ).hexdigest(),
         },
-        "content_sha256": _content_hash(content),
+        "content_sha256": snapshot_format.content_hash(content),
         "capture_warnings": sorted(capture_warnings),
         "capabilities": {
             "captures": [
@@ -380,203 +344,8 @@ def _capture(document: Any) -> dict[str, Any]:
         },
         "content": content,
     }
-    snapshot["envelope_sha256"] = _envelope_hash(snapshot)
+    snapshot["envelope_sha256"] = snapshot_format.envelope_hash(snapshot)
     return snapshot
-
-
-def _snapshot_path(path: str) -> Path:
-    if not path or not path.strip():
-        raise ValueError("snapshot_path is required")
-    candidate = Path(path).expanduser().resolve(strict=False)
-    if candidate.suffix.casefold() != ".json":
-        raise ValueError("snapshot_path must use a .json extension")
-    if not candidate.parent.is_dir():
-        raise ValueError(f"Snapshot parent directory does not exist: {candidate.parent}")
-    if candidate.exists() and not candidate.is_file():
-        raise ValueError(f"Snapshot path is not a file: {candidate}")
-    return candidate
-
-
-def _write_snapshot(path: Path, snapshot: dict[str, Any], overwrite: bool) -> None:
-    serialized = json.dumps(snapshot, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    if len(serialized.encode("utf-8")) > _MAX_SNAPSHOT_BYTES:
-        raise ValueError(
-            f"Serialized snapshot exceeds the {_MAX_SNAPSHOT_BYTES // (1024 * 1024)} MiB limit"
-        )
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
-    )
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
-            handle.write(serialized)
-            handle.flush()
-            os.fsync(handle.fileno())
-        if overwrite:
-            os.replace(temporary_name, path)
-        else:
-            try:
-                # This tool is Windows-only; os.rename publishes atomically and
-                # refuses an existing destination instead of replacing it.
-                os.rename(temporary_name, path)
-            except FileExistsError as exc:
-                raise FileExistsError(
-                    f"Snapshot already exists: {path}. Set overwrite=true to replace it."
-                ) from exc
-    except Exception:
-        try:
-            os.unlink(temporary_name)
-        except FileNotFoundError:
-            pass
-        raise
-
-
-def _validate_snapshot_content(content: Any, path: Path) -> dict[str, Any]:
-    if not isinstance(content, dict):
-        raise ValueError(f"Snapshot content must be a JSON object: {path}")
-    list_components = {
-        "paragraphs",
-        "tables",
-        "sections",
-        "headers_footers",
-        "fields",
-        "bookmarks",
-        "comments",
-        "revisions",
-    }
-    for component in sorted(list_components):
-        records = content.get(component)
-        if not isinstance(records, list) or any(not isinstance(item, dict) for item in records):
-            raise ValueError(f"Snapshot content.{component} must be a list of objects: {path}")
-    notes = content.get("notes")
-    if not isinstance(notes, dict) or set(notes) != {"footnotes", "endnotes"}:
-        raise ValueError(f"Snapshot content.notes must contain footnotes and endnotes: {path}")
-    if any(
-        not isinstance(notes[kind], list) or any(not isinstance(item, dict) for item in notes[kind])
-        for kind in ("footnotes", "endnotes")
-    ):
-        raise ValueError(f"Snapshot note collections must be lists of objects: {path}")
-    return content
-
-
-def _validate_snapshot_source(snapshot: dict[str, Any], path: Path) -> None:
-    source = snapshot.get("source")
-    if not isinstance(source, dict):
-        raise ValueError(f"Snapshot source must be a JSON object: {path}")
-    if not isinstance(source.get("full_path"), str) or not source["full_path"]:
-        raise ValueError(f"Snapshot source full_path must be a nonempty string: {path}")
-    identity = source.get("normalized_path_sha256")
-    expected_identity = hashlib.sha256(
-        ntpath.normcase(source["full_path"]).encode("utf-8")
-    ).hexdigest()
-    if identity != expected_identity:
-        raise ValueError(f"Snapshot source normalized_path_sha256 is invalid: {path}")
-
-
-def _load_snapshot(path_value: str) -> tuple[Path, dict[str, Any]]:
-    path = _snapshot_path(path_value)
-    if not path.is_file():
-        raise FileNotFoundError(f"Snapshot does not exist: {path}")
-    if path.stat().st_size > _MAX_SNAPSHOT_BYTES:
-        raise ValueError(f"Snapshot exceeds the {_MAX_SNAPSHOT_BYTES // (1024 * 1024)} MiB limit")
-    try:
-        snapshot = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise ValueError(f"Could not read snapshot JSON {path}: {exc}") from exc
-    if not isinstance(snapshot, dict):
-        raise ValueError(f"Snapshot root must be a JSON object: {path}")
-    if snapshot.get("schema") != _SCHEMA or snapshot.get("version") != _VERSION:
-        raise ValueError(
-            f"Unsupported snapshot schema/version in {path}; expected {_SCHEMA} version {_VERSION}"
-        )
-    if snapshot.get("envelope_sha256") != _envelope_hash(snapshot):
-        raise ValueError(f"Snapshot envelope hash mismatch: {path}")
-    content = _validate_snapshot_content(snapshot.get("content"), path)
-    _validate_snapshot_source(snapshot, path)
-    expected_hash = snapshot.get("content_sha256")
-    actual_hash = _content_hash(content)
-    if expected_hash != actual_hash:
-        raise ValueError(f"Snapshot content hash mismatch: {path}")
-    return path, snapshot
-
-
-def _without_offsets(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {
-            key: _without_offsets(item) for key, item in value.items() if key not in _OFFSET_KEYS
-        }
-    if isinstance(value, list):
-        return [_without_offsets(item) for item in value]
-    return value
-
-
-def _paragraph_semantic(paragraph: dict[str, Any]) -> dict[str, Any]:
-    return {
-        key: _without_offsets(value)
-        for key, value in paragraph.items()
-        if key not in {"index", *_OFFSET_KEYS}
-    }
-
-
-def _paragraph_diff(before: list[Any], after: list[Any]) -> list[dict[str, Any]]:
-    before_semantic = [_paragraph_semantic(item) for item in before]
-    after_semantic = [_paragraph_semantic(item) for item in after]
-    matcher = SequenceMatcher(
-        None,
-        [_canonical_bytes(item) for item in before_semantic],
-        [_canonical_bytes(item) for item in after_semantic],
-        autojunk=False,
-    )
-    operations: list[dict[str, Any]] = []
-    for operation, before_start, before_end, after_start, after_end in matcher.get_opcodes():
-        if operation == "equal":
-            continue
-        operations.append(
-            {
-                "operation": operation,
-                "before_start_index": before_start + 1,
-                "before_count": before_end - before_start,
-                "after_start_index": after_start + 1,
-                "after_count": after_end - after_start,
-                "before": before_semantic[before_start:before_end],
-                "after": after_semantic[after_start:after_end],
-            }
-        )
-    return operations
-
-
-def _escape_pointer(value: str) -> str:
-    return value.replace("~", "~0").replace("/", "~1")
-
-
-def _recursive_diff(before: Any, after: Any, path: str = "") -> list[dict[str, Any]]:
-    if type(before) is not type(after):
-        return [{"path": path or "/", "operation": "replace", "before": before, "after": after}]
-    if isinstance(before, dict):
-        changes: list[dict[str, Any]] = []
-        for key in sorted(before.keys() | after.keys()):
-            child_path = f"{path}/{_escape_pointer(str(key))}"
-            if key not in before:
-                changes.append({"path": child_path, "operation": "add", "after": after[key]})
-            elif key not in after:
-                changes.append({"path": child_path, "operation": "remove", "before": before[key]})
-            else:
-                changes.extend(_recursive_diff(before[key], after[key], child_path))
-        return changes
-    if isinstance(before, list):
-        changes = []
-        shared = min(len(before), len(after))
-        for index in range(shared):
-            changes.extend(_recursive_diff(before[index], after[index], f"{path}/{index}"))
-        for index in range(shared, len(before)):
-            changes.append(
-                {"path": f"{path}/{index}", "operation": "remove", "before": before[index]}
-            )
-        for index in range(shared, len(after)):
-            changes.append({"path": f"{path}/{index}", "operation": "add", "after": after[index]})
-        return changes
-    if before != after:
-        return [{"path": path or "/", "operation": "replace", "before": before, "after": after}]
-    return []
 
 
 @word_tool(title="Word Live Create Document Snapshot", domain="inspection", change="edit")
@@ -602,11 +371,10 @@ async def word_live_create_document_snapshot(
         filename: Open document name or full path (None = active document).
         overwrite: Replace an existing snapshot only when explicitly true.
     """
-    _require_windows()
-    path = _snapshot_path(snapshot_path)
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app
+    word_session.require_windows("Live snapshot capture")
+    path = snapshot_format.snapshot_path(snapshot_path)
 
-    document = find_document(get_word_app(), filename)
+    document = word_session.find_document(word_session.get_word_app(), filename)
     saved_before = bool(document.Saved)
     snapshot = _capture(document)
     saved_after = bool(document.Saved)
@@ -615,13 +383,13 @@ async def word_live_create_document_snapshot(
             "Word changed the document saved state during snapshot capture; "
             "no snapshot was written and the document must be inspected"
         )
-    _write_snapshot(path, snapshot, overwrite)
+    snapshot_format.write_snapshot(path, snapshot, overwrite)
     return {
         "success": True,
         "document": str(document.Name),
         "snapshot_path": str(path),
-        "schema": _SCHEMA,
-        "version": _VERSION,
+        "schema": snapshot_format.SCHEMA,
+        "version": snapshot_format.VERSION,
         "content_sha256": snapshot["content_sha256"],
         "envelope_sha256": snapshot["envelope_sha256"],
         "integrity_scope": "complete_snapshot_envelope_checksum_not_authentication",
@@ -655,8 +423,8 @@ async def word_live_diff_document_snapshots(
     means only that both snapshots recorded the same case-insensitive normalized
     Windows full path; it is not a persistent document identity.
     """
-    before_path, before = _load_snapshot(before_snapshot_path)
-    after_path, after = _load_snapshot(after_snapshot_path)
+    before_path, before = snapshot_format.load_snapshot(before_snapshot_path)
+    after_path, after = snapshot_format.load_snapshot(after_snapshot_path)
     before_source = before.get("source", {})
     after_source = after.get("source", {})
     same_source_path = before_source.get("normalized_path_sha256") == after_source.get(
@@ -670,15 +438,15 @@ async def word_live_diff_document_snapshots(
 
     before_content = before["content"]
     after_content = after["content"]
-    paragraph_operations = _paragraph_diff(
+    paragraph_operations = snapshot_format.paragraph_diff(
         before_content.get("paragraphs", []), after_content.get("paragraphs", [])
     )
     component_changes: dict[str, list[dict[str, Any]]] = {}
     component_names = sorted((before_content.keys() | after_content.keys()) - {"paragraphs"})
     for component in component_names:
-        changes = _recursive_diff(
-            _without_offsets(before_content.get(component)),
-            _without_offsets(after_content.get(component)),
+        changes = snapshot_format.recursive_diff(
+            snapshot_format.without_offsets(before_content.get(component)),
+            snapshot_format.without_offsets(after_content.get(component)),
         )
         if changes:
             component_changes[component] = changes

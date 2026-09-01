@@ -8,10 +8,10 @@ import pytest
 from docx import Document as DocxDocument
 from fastmcp import Client
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.main import create_server
 from word_mcp_codemode_live.tools import batch as live_batch_tools
-from word_mcp_codemode_live.tools.capture import RenderedPage
+from word_mcp_codemode_live.word import session as word_com
+from word_mcp_codemode_live.word.rendering import RenderedPage
 
 
 class _UndoRecord:

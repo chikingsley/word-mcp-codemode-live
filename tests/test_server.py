@@ -2,6 +2,7 @@ import asyncio
 
 import pytest
 from fastmcp import Client
+from fastmcp.exceptions import ToolError
 
 from word_mcp_codemode_live.main import SERVER_INSTRUCTIONS, ServerConfig, create_server
 from word_mcp_codemode_live.tools.batch import _batch_tools
@@ -163,6 +164,32 @@ def test_every_tool_has_one_domain_and_change_kind() -> None:
         assert tool.annotations is not None, tool.name
         assert len(tool.tags & DOMAINS) == 1, tool.name
         assert len(tool.tags & CHANGE_KINDS) == 1, tool.name
+
+
+def test_formatting_tools_publish_typed_contracts() -> None:
+    tools = asyncio.run(create_server(tool_mode="full").list_tools())
+    by_name = {tool.name: tool for tool in tools}
+
+    inspect_schema = by_name["word_live_get_paragraph_format"].output_schema
+    edit_schema = by_name["word_live_format_text"].output_schema
+    assert inspect_schema is not None
+    assert inspect_schema["properties"]["paragraphs"]["type"] == "array"
+    assert edit_schema is not None
+    assert edit_schema["properties"]["success"]["const"] is True
+    assert edit_schema["required"] == ["document", "range", "text_preview", "tracked"]
+
+
+@pytest.mark.asyncio
+async def test_formatting_validation_is_an_mcp_error() -> None:
+    async with Client(create_server(tool_mode="full")) as client:
+        with pytest.raises(ToolError) as caught:
+            await client.call_tool(
+                "word_live_format_text",
+                {"start": -1, "end": 3, "paragraph_alignment": "diagonal"},
+            )
+
+    assert "greater than or equal to 0" in str(caught.value)
+    assert "left" in str(caught.value)
 
 
 def test_http_transport(monkeypatch) -> None:

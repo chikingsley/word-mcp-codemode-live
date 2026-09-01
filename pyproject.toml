@@ -50,8 +50,10 @@ Changelog = "https://github.com/chikingsley/word-mcp-codemode-live/blob/main/CHA
 
 [dependency-groups]
 dev = [
+    "import-linter>=2.7",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.0",
     "ruff>=0.16.5",
     "ty>=0.0.75",
     "vulture>=2.14",
@@ -68,7 +70,33 @@ target-version = "py310"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I", "UP", "B", "C90", "S110", "S112", "RUF013"]
+select = [
+    "E4",
+    "E7",
+    "E9",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "C90",
+    "PLC0415",
+    "S110",
+    "S112",
+    "RUF013",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# These imports intentionally delay Windows-only or monkey-patched dependencies
+# until the owning integration boundary is activated.
+".github/ci/verify_built_wheel.py" = ["PLC0415"]
+"src/word_mcp_codemode_live/ooxml/package_access.py" = ["PLC0415"]
+"src/word_mcp_codemode_live/ooxml/preservation.py" = ["PLC0415"]
+"src/word_mcp_codemode_live/tools/export.py" = ["PLC0415"]
+"src/word_mcp_codemode_live/tools/lifecycle.py" = ["PLC0415"]
+"src/word_mcp_codemode_live/word/session.py" = ["PLC0415"]
+"tests/test_live_batch.py" = ["PLC0415"]
+"tests/test_live_merge.py" = ["PLC0415"]
+"tests/test_live_navigation.py" = ["PLC0415"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15
@@ -86,3 +114,42 @@ allowed-unresolved-imports = ["pythoncom", "win32com.**"]
 min_confidence = 80
 paths = ["src", "tests"]
 sort_by_size = true
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+
+[tool.coverage.run]
+branch = true
+source = ["word_mcp_codemode_live"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
+[tool.importlinter]
+root_package = "word_mcp_codemode_live"
+
+[[tool.importlinter.contracts]]
+name = "Infrastructure does not depend on MCP tools"
+type = "forbidden"
+source_modules = [
+    "word_mcp_codemode_live.word",
+    "word_mcp_codemode_live.ooxml",
+    "word_mcp_codemode_live.filesystem",
+    "word_mcp_codemode_live.validation",
+]
+forbidden_modules = ["word_mcp_codemode_live.tools"]
+
+[[tool.importlinter.contracts]]
+name = "Live Word and closed OOXML implementations stay independent"
+type = "independence"
+modules = [
+    "word_mcp_codemode_live.word",
+    "word_mcp_codemode_live.ooxml",
+]
+
+[[tool.importlinter.contracts]]
+name = "Tools do not depend on server assembly"
+type = "forbidden"
+source_modules = ["word_mcp_codemode_live.tools"]
+forbidden_modules = ["word_mcp_codemode_live.main"]

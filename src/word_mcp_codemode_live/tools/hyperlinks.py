@@ -1,17 +1,12 @@
 """Inspect and edit native hyperlinks in open Microsoft Word documents."""
 
 import logging
-import sys
 from typing import Any
 
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
 
 logger = logging.getLogger(__name__)
-
-
-def _require_windows() -> None:
-    if sys.platform != "win32":
-        raise RuntimeError("Live hyperlink tools are only available on Windows")
 
 
 def _as_text(value: Any) -> str:
@@ -114,11 +109,10 @@ async def word_live_list_hyperlinks(filename: str | None = None) -> dict[str, An
     Args:
         filename: Open document name or full path (None selects the active document).
     """
-    _require_windows()
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app
+    word_session.require_windows("Live hyperlink tools")
 
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     hyperlinks = [
         _hyperlink_data(document.Hyperlinks(index), index)
         for index in range(1, document.Hyperlinks.Count + 1)
@@ -155,16 +149,14 @@ async def word_live_add_hyperlink(
         start: Optional zero-based start character position.
         end: Optional zero-based exclusive end character position.
     """
-    _require_windows()
+    word_session.require_windows("Live hyperlink tools")
     if not address.strip() and not subaddress.strip():
         raise ValueError("Provide address, subaddress, or both")
     if display_text == "":
         raise ValueError("display_text cannot be empty")
 
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
-
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     anchor = _resolve_anchor(
         document,
         start=start,
@@ -172,7 +164,7 @@ async def word_live_add_hyperlink(
         display_text=display_text,
     )
 
-    with undo_record(app, "MCP: Add Hyperlink"):
+    with word_session.undo_record(app, "MCP: Add Hyperlink"):
         if display_text is not None:
             anchor = _replace_anchor_text(document, anchor, display_text)
         hyperlink = document.Hyperlinks.Add(
@@ -214,16 +206,14 @@ async def word_live_update_hyperlink(
         subaddress: New internal target, an empty string to clear it, or None to retain it.
         display_text: New visible text or None to retain it.
     """
-    _require_windows()
+    word_session.require_windows("Live hyperlink tools")
     if address is None and subaddress is None and display_text is None:
         raise ValueError("Provide at least one property to update")
     if display_text == "":
         raise ValueError("display_text cannot be empty")
 
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
-
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     hyperlink = _get_hyperlink(document, hyperlink_index)
     resulting_address = _as_text(hyperlink.Address) if address is None else address
     resulting_subaddress = _as_text(hyperlink.SubAddress) if subaddress is None else subaddress
@@ -236,7 +226,7 @@ async def word_live_update_hyperlink(
     rebuild = (address == "" and _as_text(hyperlink.Address)) or (
         subaddress == "" and _as_text(hyperlink.SubAddress)
     )
-    with undo_record(app, "MCP: Update Hyperlink"):
+    with word_session.undo_record(app, "MCP: Update Hyperlink"):
         if rebuild:
             # A duplicate tracks Word's range adjustment when deleting the hidden
             # HYPERLINK field code; numeric endpoints captured before Delete do not.
@@ -283,15 +273,14 @@ async def word_live_remove_hyperlink(
         filename: Open document name or full path (None selects the active document).
         hyperlink_index: One-based index returned by ``word_live_list_hyperlinks``.
     """
-    _require_windows()
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
+    word_session.require_windows("Live hyperlink tools")
 
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     hyperlink = _get_hyperlink(document, hyperlink_index)
     removed = _hyperlink_data(hyperlink, hyperlink_index)
 
-    with undo_record(app, "MCP: Remove Hyperlink"):
+    with word_session.undo_record(app, "MCP: Remove Hyperlink"):
         hyperlink.Delete()
 
     return {

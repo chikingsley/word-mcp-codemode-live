@@ -12,8 +12,8 @@ from fastmcp.experimental.transforms.code_mode import CodeMode, GetSchemas, Sear
 from fastmcp.server.providers import FileSystemProvider
 from fastmcp.tools import Tool
 
-from word_mcp_codemode_live.utils.path_utils import install_path_hook
-from word_mcp_codemode_live.utils.save_utils import install_save_hook
+from word_mcp_codemode_live.ooxml.package_access import install_path_hook
+from word_mcp_codemode_live.ooxml.preservation import install_save_hook
 
 Transport = Literal["stdio", "http"]
 ToolMode = Literal["code", "full"]

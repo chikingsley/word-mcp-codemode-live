@@ -1,14 +1,16 @@
 """Inspect and edit native Microsoft Word footnotes and endnotes."""
 
-import json
-import sys
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+
+from pydantic import BaseModel, Field
 
 from word_mcp_codemode_live.tools.metadata import word_tool
+from word_mcp_codemode_live.word import session as word_session
 
 NoteType = Literal["footnote", "endnote", "all"]
 MutationNoteType = Literal["footnote", "endnote"]
 NoteOperation = Literal["add", "delete", "convert"]
+PositiveIndex = Annotated[int, Field(ge=1)]
 
 _NUMBERING_RULES = {"continuous": 0, "restart_each_section": 1, "restart_each_page": 2}
 _NUMBER_STYLES = {
@@ -25,6 +27,38 @@ _SEPARATOR_STORIES = {
     "footnote": {"separator": 12, "continuation_separator": 13},
     "endnote": {"separator": 15, "continuation_separator": 16},
 }
+
+
+class NoteEntry(BaseModel):
+    index: int
+    type: MutationNoteType
+    text: str
+    reference_start: int
+    page: int | None
+
+
+class NoteListResult(BaseModel):
+    success: Literal[True] = True
+    document: str
+    footnote_count: int
+    endnote_count: int
+    notes: list[NoteEntry]
+
+
+class NoteEditResult(BaseModel):
+    success: Literal[True] = True
+    document: str
+    operation: NoteOperation
+    note_type: MutationNoteType
+    before: dict[str, int]
+    after: dict[str, int]
+    note_index: int | None = None
+    reference_start: int | None = None
+    text: str | None = None
+    deleted_text: str | None = None
+    converted: int | None = None
+    from_type: MutationNoteType | None = Field(default=None, alias="from")
+    to: MutationNoteType | None = None
 
 
 def _enum_name(value: int, values: dict[str, int]) -> str:
@@ -74,9 +108,9 @@ def _note_collection(document: Any, note_type: MutationNoteType) -> Any:
     return document.Footnotes if note_type == "footnote" else document.Endnotes
 
 
-def _note_entries(document: Any, note_type: MutationNoteType) -> list[dict[str, Any]]:
+def _note_entries(document: Any, note_type: MutationNoteType) -> list[NoteEntry]:
     collection = _note_collection(document, note_type)
-    entries: list[dict[str, Any]] = []
+    entries: list[NoteEntry] = []
     for index in range(1, collection.Count + 1):
         note = collection(index)
         reference = note.Reference
@@ -85,13 +119,13 @@ def _note_entries(document: Any, note_type: MutationNoteType) -> list[dict[str, 
         except Exception:
             page = None
         entries.append(
-            {
-                "index": index,
-                "type": note_type,
-                "text": str(note.Range.Text).rstrip("\r\x07"),
-                "reference_start": int(reference.Start),
-                "page": page,
-            }
+            NoteEntry(
+                index=index,
+                type=note_type,
+                text=str(note.Range.Text).rstrip("\r\x07"),
+                reference_start=int(reference.Start),
+                page=page,
+            )
         )
     return entries
 
@@ -148,7 +182,7 @@ def _target_range(
 async def word_live_list_footnotes_endnotes(
     filename: str | None = None,
     note_type: NoteType = "all",
-) -> str:
+) -> NoteListResult:
     """List genuine Word footnotes and/or endnotes in an open document.
 
     Args:
@@ -158,43 +192,30 @@ async def word_live_list_footnotes_endnotes(
     Returns:
         JSON containing note text, one-based index, reference position, and page.
     """
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live note tools are only available on Windows"})
+    word_session.require_windows("Live note tools")
     if note_type not in {"footnote", "endnote", "all"}:
-        return json.dumps({"error": "note_type must be footnote, endnote, or all"})
+        raise ValueError("note_type must be footnote, endnote, or all")
 
-    try:
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app
-
-        document = find_document(get_word_app(), filename)
-        notes: list[dict[str, Any]] = []
-        if note_type in {"footnote", "all"}:
-            notes.extend(_note_entries(document, "footnote"))
-        if note_type in {"endnote", "all"}:
-            notes.extend(_note_entries(document, "endnote"))
-        return json.dumps(
-            {
-                "success": True,
-                "document": document.Name,
-                "footnote_count": int(document.Footnotes.Count),
-                "endnote_count": int(document.Endnotes.Count),
-                "notes": notes,
-            },
-            ensure_ascii=False,
-        )
-    except Exception as exc:
-        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+    document = word_session.find_document(word_session.get_word_app(), filename)
+    notes: list[NoteEntry] = []
+    if note_type in {"footnote", "all"}:
+        notes.extend(_note_entries(document, "footnote"))
+    if note_type in {"endnote", "all"}:
+        notes.extend(_note_entries(document, "endnote"))
+    return NoteListResult(
+        document=str(document.Name),
+        footnote_count=int(document.Footnotes.Count),
+        endnote_count=int(document.Endnotes.Count),
+        notes=notes,
+    )
 
 
 @word_tool(title="Word Live Get Note Configuration", domain="notes", change="read")
 async def word_live_get_note_configuration(filename: str | None = None) -> dict[str, Any]:
     """Inspect native footnote/endnote numbering, placement, and separators."""
-    if sys.platform != "win32":
-        raise RuntimeError("Live note tools are only available on Windows")
+    word_session.require_windows("Live note tools")
 
-    from word_mcp_codemode_live.core.word_com import find_document, get_word_app
-
-    document = find_document(get_word_app(), filename)
+    document = word_session.find_document(word_session.get_word_app(), filename)
     return {
         "success": True,
         "document": str(document.Name),
@@ -312,8 +333,7 @@ async def word_live_set_note_configuration(
     and ``end_of_section`` or ``end_of_document`` for endnotes. Separator stories
     exist only after Word has created at least one note of the selected type.
     """
-    if sys.platform != "win32":
-        raise RuntimeError("Live note tools are only available on Windows")
+    word_session.require_windows("Live note tools")
     changes = (
         starting_number,
         numbering_rule,
@@ -326,14 +346,8 @@ async def word_live_set_note_configuration(
         note_type, starting_number, numbering_rule, number_style, location, changes
     )
 
-    from word_mcp_codemode_live.core.word_com import (
-        find_document,
-        get_word_app,
-        undo_transaction,
-    )
-
-    app = get_word_app()
-    document = find_document(app, filename)
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
     collection = _note_collection(document, note_type)
     before = _note_configuration(document, note_type)
     effective_rule = (
@@ -359,7 +373,7 @@ async def word_live_set_note_configuration(
         else None
     )
 
-    with undo_transaction(app, document, f"MCP: Configure {note_type.title()}s"):
+    with word_session.undo_transaction(app, document, f"MCP: Configure {note_type.title()}s"):
         _apply_note_numbering(
             collection,
             effective_rule=effective_rule,
@@ -401,12 +415,12 @@ async def word_live_edit_footnotes_endnotes(
     operation: NoteOperation = "add",
     note_type: MutationNoteType = "footnote",
     target_text: str | None = None,
-    paragraph_index: int | None = None,
-    occurrence: int = 1,
+    paragraph_index: PositiveIndex | None = None,
+    occurrence: PositiveIndex = 1,
     position: Literal["before", "after"] = "after",
     text: str = "",
-    note_index: int | None = None,
-) -> str:
+    note_index: PositiveIndex | None = None,
+) -> NoteEditResult:
     """Add, delete, or convert genuine Word footnotes and endnotes.
 
     For ``add``, provide exactly one target: ``target_text`` or a one-based
@@ -427,79 +441,69 @@ async def word_live_edit_footnotes_endnotes(
     Returns:
         JSON with native Word note counts and mutation details.
     """
-    if sys.platform != "win32":
-        return json.dumps({"error": "Live note tools are only available on Windows"})
+    word_session.require_windows("Live note tools")
     if operation not in {"add", "delete", "convert"}:
-        return json.dumps({"error": "operation must be add, delete, or convert"})
+        raise ValueError("operation must be add, delete, or convert")
     if note_type not in {"footnote", "endnote"}:
-        return json.dumps({"error": "note_type must be footnote or endnote"})
+        raise ValueError("note_type must be footnote or endnote")
     if position not in {"before", "after"}:
-        return json.dumps({"error": "position must be before or after"})
+        raise ValueError("position must be before or after")
 
-    try:
-        from word_mcp_codemode_live.core.word_com import find_document, get_word_app, undo_record
+    app = word_session.get_word_app()
+    document = word_session.find_document(app, filename)
+    collection = _note_collection(document, note_type)
+    before = {
+        "footnotes": int(document.Footnotes.Count),
+        "endnotes": int(document.Endnotes.Count),
+    }
+    result: dict[str, Any]
 
-        app = get_word_app()
-        document = find_document(app, filename)
-        collection = _note_collection(document, note_type)
-        before = {
-            "footnotes": int(document.Footnotes.Count),
-            "endnotes": int(document.Endnotes.Count),
-        }
-        result: dict[str, Any]
+    with word_session.undo_record(app, f"MCP: {operation.title()} {note_type.title()}"):
+        if operation == "add":
+            if not text:
+                raise ValueError("text is required for operation='add'")
+            word_range = _target_range(
+                document,
+                target_text=target_text,
+                paragraph_index=paragraph_index,
+                occurrence=occurrence,
+                position=position,
+            )
+            # Dynamic COM dispatch can silently drop Text when Word's optional
+            # Reference argument is omitted. Create the native note first, then
+            # assign its body explicitly through the returned Word Range.
+            note = collection.Add(Range=word_range)
+            note.Range.Text = text
+            result = {
+                "note_index": int(note.Index),
+                "reference_start": int(note.Reference.Start),
+                "text": text,
+            }
+        elif operation == "delete":
+            if note_index is None or not 1 <= note_index <= collection.Count:
+                raise ValueError(f"note_index must be between 1 and {collection.Count}")
+            note = collection(note_index)
+            deleted_text = str(note.Range.Text).rstrip("\r\x07")
+            note.Delete()
+            result = {"note_index": note_index, "deleted_text": deleted_text}
+        else:
+            converted = int(collection.Count)
+            collection.Convert()
+            result = {
+                "converted": converted,
+                "from": note_type,
+                "to": "endnote" if note_type == "footnote" else "footnote",
+            }
 
-        with undo_record(app, f"MCP: {operation.title()} {note_type.title()}"):
-            if operation == "add":
-                if not text:
-                    raise ValueError("text is required for operation='add'")
-                word_range = _target_range(
-                    document,
-                    target_text=target_text,
-                    paragraph_index=paragraph_index,
-                    occurrence=occurrence,
-                    position=position,
-                )
-                # Dynamic COM dispatch can silently drop Text when Word's optional
-                # Reference argument is omitted. Create the native note first, then
-                # assign its body explicitly through the returned Word Range.
-                note = collection.Add(Range=word_range)
-                note.Range.Text = text
-                result = {
-                    "note_index": int(note.Index),
-                    "reference_start": int(note.Reference.Start),
-                    "text": text,
-                }
-            elif operation == "delete":
-                if note_index is None or not 1 <= note_index <= collection.Count:
-                    raise ValueError(f"note_index must be between 1 and {collection.Count}")
-                note = collection(note_index)
-                deleted_text = str(note.Range.Text).rstrip("\r\x07")
-                note.Delete()
-                result = {"note_index": note_index, "deleted_text": deleted_text}
-            else:
-                converted = int(collection.Count)
-                collection.Convert()
-                result = {
-                    "converted": converted,
-                    "from": note_type,
-                    "to": "endnote" if note_type == "footnote" else "footnote",
-                }
-
-        after = {
-            "footnotes": int(document.Footnotes.Count),
-            "endnotes": int(document.Endnotes.Count),
-        }
-        return json.dumps(
-            {
-                "success": True,
-                "document": document.Name,
-                "operation": operation,
-                "note_type": note_type,
-                "before": before,
-                "after": after,
-                **result,
-            },
-            ensure_ascii=False,
-        )
-    except Exception as exc:
-        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+    after = {
+        "footnotes": int(document.Footnotes.Count),
+        "endnotes": int(document.Endnotes.Count),
+    }
+    return NoteEditResult(
+        document=str(document.Name),
+        operation=operation,
+        note_type=note_type,
+        before=before,
+        after=after,
+        **result,
+    )

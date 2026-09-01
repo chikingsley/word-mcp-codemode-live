@@ -3,8 +3,8 @@ from typing import Any
 
 import pytest
 
-from word_mcp_codemode_live.core import word_com
 from word_mcp_codemode_live.tools import numbering as live_numbering
+from word_mcp_codemode_live.word import session as word_com
 
 
 class FakeListLevel:
@@ -157,7 +157,7 @@ def fake_undo_record(_app: Any, _name: str):  # type: ignore[no-untyped-def]
 @pytest.fixture
 def fake_document(monkeypatch: pytest.MonkeyPatch) -> FakeDocument:
     document = FakeDocument()
-    monkeypatch.setattr(live_numbering.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
     monkeypatch.setattr(word_com, "get_word_app", lambda: object())
     monkeypatch.setattr(word_com, "find_document", lambda _app, _filename: document)
     monkeypatch.setattr(word_com, "undo_record", fake_undo_record)
@@ -244,7 +244,7 @@ async def test_inspect_heading_numbering_reports_unlinked_and_numbered_states(
 async def test_setup_validates_level_maps_before_opening_word(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(live_numbering.sys, "platform", "win32")
+    monkeypatch.setattr(word_com.sys, "platform", "win32")
 
     with pytest.raises(ValueError, match="outside 1-9"):
         await live_numbering.word_live_setup_heading_numbering(number_formats={10: "%10"})

@@ -20,6 +20,12 @@ _WORD_APP: Any | None = None
 _UNDO_DEPTH: ContextVar[int] = ContextVar("word_mcp_undo_depth", default=0)
 
 
+def require_windows(feature: str = "Word COM automation") -> None:
+    """Reject a live Word operation before importing Windows-only dependencies."""
+    if sys.platform != "win32":
+        raise OSError(f"{feature} is only available on Windows")
+
+
 def remember_word_app(app: Any) -> Any:
     """Keep the attached Word application alive for the MCP server lifetime."""
     global _WORD_APP
@@ -35,8 +41,7 @@ def get_word_app():
     Running Object Table (ROT) entries to find one with documents.
     Raises RuntimeError if Word is not running or not on Windows.
     """
-    if sys.platform != "win32":
-        raise RuntimeError("Word COM automation is only available on Windows")
+    require_windows()
 
     global _WORD_APP
 
